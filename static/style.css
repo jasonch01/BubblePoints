@@ -33,3 +33,8 @@ nav .navbar-brand .green
 {
     color: #2e944b;
 }
+
+form {
+    text-align: center;
+    margin: 1em auto;
+}

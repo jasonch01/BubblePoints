@@ -1,0 +1,3 @@
+#ignoring specific file
+.env
+secret_key.py
