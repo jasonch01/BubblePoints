@@ -2,38 +2,32 @@
 
 {% block main %}
 
-Hello, World!
+<form action="/" method="post">
+  <div class="mb-3">
+      <input class="form-control mx-auto w-auto" name="points" placeholder="Enter points" type="number">
+  </div>
+  <button class="btn btn-primary" type="submit">Submit</button>
+</form>
 
 
 <table class="table table-success table-striped table-md">
   <thead>
     <tr class="table-light">
-      <th class="table-light">...</th>
-      <th class="table-light">...</th>
-      <th class="table-light">...</th>
+      <th class="table-light">dublbubl number</th>
+      <th class="table-light">username</th>
+      <th class="table-light">points_in</th>
+      <th class="table-light">date created</th>
     </tr>
   </thead>
   <tbody>
+    {% for row in dublbubl %}
     <tr class="table-secondary">
-      <td class="table-success">...</td>
-      <td class="table-success">...</td>
-      <td class="table-success">...</td>
+      <td class="table-success">{{ row[0] }}</td>
+      <td class="table-success">{{ row[2] }}</td>
+      <td class="table-success">{{ row[3] }}</td>
+      <td class="table-success">{{ row[5] }}</td>
     </tr>
-    <tr class="table-secondary">
-      <td class="table-success">...</td>
-      <td class="table-success">...</td>
-      <td class="table-success">...</td>
-    </tr>
-    <tr class="table-secondary">
-      <td class="table-success">...</td>
-      <td class="table-success">...</td>
-      <td class="table-success">...</td>
-    </tr>
-    <tr class="table-secondary">
-      <td class="table-success">...</td>
-      <td class="table-success">...</td>
-      <td class="table-success">...</td>
-    </tr>
+    {% endfor %}
   </tbody>
 </table>
 

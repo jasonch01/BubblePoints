@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import datetime
 
 from secret_key import secret_key as default_key
 from dotenv import load_dotenv
@@ -27,16 +28,42 @@ Session(app)
 con = sqlite3.connect("dublbubl.db", check_same_thread=False)
 cur = con.cursor()
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    username TEXT NOT NULL,
-    hash TEXT NOT NULL,
-    points INTEGER NOT NULL DEFAULT 1000
-)
-""")
 
+def init_db():
+    # Create users table
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        username TEXT NOT NULL,
+        hash TEXT NOT NULL,
+        points INTEGER NOT NULL DEFAULT 1000
+    )
+    """)
 
+    # Create dublbubl table
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS dublbubl (
+        row_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        user_id INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        points_in INTEGER NOT NULL,
+        points_out INTEGER NOT NULL,
+        date_created TEXT NOT NULL,        
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (username) REFERENCES users(username)
+    )   
+    """)
+
+    # Create points_tracker table
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS points_tracker (
+        tracker_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        current_points_in INTEGER NOT NULL,
+        date_created TEXT NOT NULL        
+    )   
+    """)
+
+init_db()
 
 @app.after_request
 def after_request(response):
@@ -55,9 +82,113 @@ def login_required(f):
     return decorated_function
 
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def index():
-        return render_template('index.html')
+
+    # Check database for dublbubl table
+    dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
+
+    current_points_in = cur.execute("SELECT current_points_in FROM points_tracker").fetchone()
+    print(f"Current points in points tracker: {current_points_in[0]}")   
+
+    points = request.form.get("points")
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    if request.method == "POST":
+        # Check points are entered
+        if not points:
+            return "No points entered"
+        try:
+            points = int(points)
+        except ValueError:
+            return "Invalid Input"
+
+        # Check points are positive number
+        if points is None:
+            return "Invalid Input"
+        elif points <= 0:
+            return "Points must be postiive"
+    
+        
+         # Check database for user details
+        user_id = session["user_id"]
+        user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+        try:
+            # Insert row into dublbubl
+            cur.execute("""
+            INSERT INTO dublbubl (row_id, user_id, username, points_in, points_out, date_created)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (None, user[0], user[1], points, (points * 2), current_date))
+            # Commit the changes to the dublbubl database
+            con.commit()
+        except Exception as e:
+            print(f"Error inserting row into dublbubl: {e}")
+            con.rollback()
+
+        # Fetch the number of rows in dublbubl
+        row_count = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+        print(f"Number of rows in dublbubl: {row_count}")
+
+
+        # Add points_in to points_tracker only if dublbubl has more than 1 row
+        if row_count > 1:
+            if current_points_in:
+                new_points_in = current_points_in[0] + points
+                cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (new_points_in, current_date))
+            else:
+                cur.execute("INSERT INTO points_tracker (current_points_in, date_created) VALUES (?, ?)", (points, current_date))
+
+            # Commit the changes to the points_tracker database   
+            con.commit()
+        else:
+            # If there is only one row, don't update points in points_tracker
+            new_points_in = current_points_in[0] if current_points_in else 0
+
+        oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
+        
+        print(f"Current_points_in: {current_points_in[0]}")
+
+        # If total points added exceed twice the oldest row's points, delete the oldest row
+        while new_points_in >= oldest_row_points_out[0]:
+            print(f"Oldest row points_out: {oldest_row_points_out[0]}")
+
+            # Get the row ID of the oldest row
+            oldest_row_id = cur.execute("SELECT row_id FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
+
+            print(f"Current points before deletion: {current_points_in[0]}")
+
+            #Delete the oldest row
+            cur.execute("DELETE FROM dublbubl WHERE row_id = ?", (oldest_row_id[0],))
+            con.commit()
+
+            print(f"Deleting row with points_out: {oldest_row_points_out[0]}")
+
+            # Calculate the remaining points in points_tracker
+            remaining_points_in = new_points_in - oldest_row_points_out[0]
+
+            # Update points_tracker with the remaining points
+            cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (remaining_points_in, current_date))
+            con.commit()
+
+            new_points_in = remaining_points_in
+
+            oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
+
+            if oldest_row_points_out is None:
+                break
+
+
+        return redirect("/")
+        
+    else:
+        return render_template('index.html', dublbubl=dublbubl)
+
+
+
+
+
+
 
 
 @app.route("/register", methods=["GET", "POST"])
