@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+
+<div class="container d-flex justify-content-center align-items-center leaderboard">
+  <ul class="list-group shadow-sm" style="width: 300px">
+    <li class="list-group-item text-center text-white border-0" style="background: #1E1E1E;">
+      <h3 class="fw-normal">Leaderboard</h3>
+    </li>
+    {% for user in user %}
+    <li class="list-group-item d-flex justify-content-between text-white border-0" style="background: #FF5E5E; display: flex; justify-content: space-between;">
+      <span>{{ loop.index }}</span>
+      <span>{{ user[0] }} </span>
+      <span>{{ user[1] }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+
+{% endblock %}
