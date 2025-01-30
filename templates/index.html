@@ -4,9 +4,10 @@
 
 {% if session["user_id"] %}
 <div class="container text-center dashboard">
-  <div class="row">
+  <div class="row justify-content-center">
+    <!-- Account Overview Table -->
     <div class="col">      
-      <table class="table table-responsive-sm table-sm">
+      <table class="table table-responsive table-sm account-overview">
         <thead class="table-primary">
           <tr class="table-primary">
             <th class="table-primary" colspan="2">Account Overview</th>
@@ -18,19 +19,20 @@
             <th class="table-secondary">point balance</th>
           </tr>
         </thead>        
-        <tbody>
+        <tbody id="point-balance">
           {% for user in user %}
-          <tr class="table-light">
-            <td class="table-light">{{ user[1] }}</td>
-            <td class="table-light">{{ user[3] }}</td>
+          <tr class="table-light" data-user-id="{{ user[0] }}"> <!-- Assuming user[0] is the user_id -->
+            <td class="table-light">{{ user[1] }}</td> <!-- Username -->
+            <td class="table-light">{{ user[3] }}</td> <!-- Point balance -->
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
 
+    <!-- Account History Table -->
     <div class="col">
-      <table class="table table-responsive-sm table-sm">
+      <table class="table table-responsive table-sm account-history">
         <thead class="table-primary">
           <tr class="table-primary">
             <th class="table-primary" colspan="5">Account History</th>
@@ -38,29 +40,31 @@
         </thead>        
         <thead class="table-secondary">
           <tr class="table-secondary">
-            <th class="table-secondary">bubble #</th>
-            <th class="table-secondary">points invested</th>
-            <th class="table-secondary">points earned</th>
-            <th class="table-secondary">created on</th>
-            <th class="table-secondary">archived on</th>
+            <th>bubble #</th>
+            <th>points invested</th>
+            <th>points earned</th>
+            <th>created on</th>
+            <th>archived on</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="user-history">
           {% for user in user_history %}
           <tr class="table-light">
-            <td class="table-light">{{ user[3] }}</td>
-            <td class="table-light">{{ user[6] }}</td>
-            <td class="table-light">{{ user[7] }}</td>
-            <td class="table-light">{{ user[8] }}</td>
-            <td class="table-light">{{ user[9] }}</td>
+            <td>{{ user[3] }}</td>
+            <td>{{ user[6] }}</td>
+            <td>{{ user[7] }}</td>
+            <td>{{ user[8] }}</td>
+            <td>{{ user[9] }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    
+  </div>
+</div>
 
-
-<form action="/" method="post" class="d-flex align-items-center justify-content-center">
+<form action="/" method="post" class="d-flex justify-content-center align-items-center">
   <input class="form-control me-2 w-auto" name="points" placeholder="Enter points" type="number">
   <button class="btn btn-primary" type="submit">Create Bubble</button>
 </form>
@@ -91,7 +95,7 @@
       <th>created on</th>
     </tr>
   </thead>
-  <tbody>
+  <tbody id="dublbubl">
     {% for row in dublbubl %}
     <tr class="
     {% if row[3] == 10000 %}
@@ -130,5 +134,115 @@
     <a href="{{ url_for('index', page=page+1) }}" class="btn btn-primary">Next</a>
   {% endif %}
 </div>
+
+<script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+<script>
+
+var user_id = "{{ session['user_id'] }}"; // Dynamically set the user ID from the session or context
+
+// Connect to the server via Socket.IO, passing the user ID
+var socket = io();
+
+  /// Keep track of the current page (ensure this matches the backend logic)
+  let currentPage = 1;
+
+  // Function to determine the row class based on points_in value
+  function determineRowClass(pointsIn) {
+    if (pointsIn == 10000) {
+      return "table-dark";
+    } else if (pointsIn > 5000) {
+      return "table-danger";
+    } else if (pointsIn > 1000) {
+      return "table-warning";
+    } else {
+      return "table-success";
+    }
+  }
+
+  // Listen for "update_table" events from the server
+  socket.on("update_table", (data) => {
+    console.log("Received update:", data);
+
+    // Ensure the update matches the current page
+    if (data.page === currentPage) {
+      const tableBody = document.getElementById("dublbubl");
+      tableBody.innerHTML = ""; // Clear the table body
+
+      // Add the updated rows to the table
+      data.rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.className = determineRowClass(row[3]); // Apply class based on points_in
+        tr.innerHTML = `
+          <td>${row[0]}</td>
+          <td>${row[2]}</td>
+          <td>${row[3]}</td>
+          <td>${row[4]}</td>
+          <td>${row[5]}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+  });
+
+// Listen for user history updates
+socket.on("update_user_history", function (data) {
+    console.log("Received user history update:", data.history);
+
+    let historyContainer = document.getElementById("user-history");
+    if (!historyContainer) {
+        console.error("Error: Element #user-history not found.");
+        return;
+    }
+
+    historyContainer.innerHTML = ""; // Clear old history
+
+    if (data && Array.isArray(data.history)) {
+        data.history.forEach(function (item) {
+            let row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${item.bubble_number}</td>
+                <td>${item.points_invested}</td>
+                <td>${item.points_earned}</td>
+                <td>${new Date(item.created_on).toLocaleString()}</td>
+                <td>${item.archived_on ? new Date(item.archived_on).toLocaleString() : "N/A"}</td>
+            `;
+            historyContainer.appendChild(row);
+        });
+    } else {
+        console.error("User history data is invalid:", data.history);
+    }
+});
+
+ // Listen for point balance updates from the server
+ socket.on("update_point_balance", function (data) {
+    console.log("Received point balance update:", data);
+
+    // Log all rows with their user ids
+    let rows = document.querySelectorAll("#point-balance tr");
+    rows.forEach(row => {
+        console.log("Row user ID:", row.getAttribute("data-user-id"));
+    });
+
+    // Find the row for the logged-in user by matching user_id
+    let pointBalanceRow = document.querySelector(`#point-balance tr[data-user-id="${user_id}"]`);
+
+    if (!pointBalanceRow) {
+        console.error("Error: Point balance row for user not found.");
+        return;
+    }
+
+    // Find the second <td> in that row (the point balance column)
+    let pointBalanceCell = pointBalanceRow.querySelector("td:nth-child(2)");
+
+    if (pointBalanceCell && data && data.point_balance !== undefined) {
+        // Update the point balance in the table cell
+        pointBalanceCell.textContent = `${data.point_balance}`; // Update with the new balance
+    } else {
+        console.error("Point balance or element is invalid:", data);
+    }
+  });
+
+
+</script>
 
 {% endblock %}

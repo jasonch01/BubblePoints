@@ -6,6 +6,7 @@ from secret_key import secret_key as default_key
 from dotenv import load_dotenv
 
 from flask import Flask, request, redirect, render_template, request, session
+from flask_socketio import SocketIO, emit, join_room
 from flask_session import Session
 from functools import wraps
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -16,8 +17,13 @@ load_dotenv()
 # Configure application
 app = Flask(__name__)
 
+# Initialize Flask-SocketIO
+socketio = SocketIO(app)
+
+
 # Set the secret key
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", default_key)
+
 
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_PERMANENT"] = False
@@ -99,6 +105,15 @@ def login_required(f):
     return decorated_function
 
 
+@socketio.on('connect')
+def on_connect():
+    user_id = session.get("user_id")  # Ensure user_id is available
+    if user_id:
+        # Join the room based on the user's ID
+        join_room(user_id)
+        print(f"User {user_id} joined room")
+
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -161,6 +176,10 @@ def index():
     current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     if request.method == "POST":
+        # Check if the user is logged in before allowing them to submit points
+        if user_id is None:
+            return "You must be logged in to submit points."
+        
         # Check points are entered
         if not points:
             return "No points entered"
@@ -194,13 +213,21 @@ def index():
             # Deduct from total points and update it in the database
             total_points = current_points - points
             cur.execute("UPDATE users SET points = ? WHERE id = ?", (total_points, user[0]))
-            con.commit()
-
             # Commit the changes to the dublbubl database
             con.commit()
+
+            # Emit an event to update the user's points balance in real-time (only the point_balance)
+            socketio.emit("update_point_balance", {
+                "point_balance": total_points  # Emitting only the total points balance
+            }, room=user[0])  # Emits only to the specific user
+            print(f"Emitting update to room: {user[0]} with new balance: {total_points}")
+
         except Exception as e:
             print(f"Error inserting row into dublbubl: {e}")
             con.rollback()
+
+            
+
 
         # Fetch the number of rows in dublbubl
         row_count = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
@@ -248,6 +275,28 @@ def index():
                 """, (user[0], user[1], oldest_row[0], oldest_row[1], oldest_row[2], oldest_row[3], oldest_row[4], oldest_row[5], current_date))
                 con.commit()
 
+                # Fetch the latest 5 history records from all users
+                updated_user_history = cur.execute("""
+                    SELECT * FROM dublbubl_history 
+                    ORDER BY row_id DESC LIMIT 5
+                """).fetchall()
+
+                # Emit an event to update the user's history in real-time
+                socketio.emit("update_user_history", {
+                    "history": [
+                        {
+                            "bubble_number": row[3], 
+                            "points_invested": row[6], 
+                            "points_earned": row[7], 
+                            "created_on": row[8], 
+                            "archived_on": row[9]
+                        } for row in updated_user_history
+                    ]
+                }, room=user[0])  # Emits only to the specific user
+                print(f"Emitting update to room: {user[0]} with updated user history: {oldest_row[4]}")
+
+
+
                 # Add total_points_earned and update it in the database
                 total_points_earned = current_total_points + oldest_row[4]
                 cur.execute("UPDATE users SET total_points_earned = ? WHERE id = ?", (total_points_earned, oldest_row[1]))
@@ -261,6 +310,14 @@ def index():
                 # Update current_total_points to reflect new total
                 current_total_points = total_points_earned
 
+                # Emit an event to update the user's points balance in real-time
+                socketio.emit("update_point_balance", {
+                    "username": user[1], 
+                    "point_balance": total_points
+                }, room=user[0])  # Emits only to the specific user
+                print(f"Emitting update to room: {user[0]} with new balance: {total_points}")
+
+
             #Delete the oldest row from dublbubl    
             cur.execute("DELETE FROM dublbubl WHERE row_id = ?", (oldest_row_id[0],))
             con.commit()
@@ -272,11 +329,21 @@ def index():
             cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (remaining_points_in, current_date))
             con.commit()
 
+
+            # Fetch the updated rows to send to the front-end
+            updated_rows = cur.execute("""
+                SELECT * FROM dublbubl
+                ORDER BY row_id ASC
+                LIMIT ? OFFSET ?
+            """, (rows_per_page, offset)).fetchall()
+
+            # Emit the updated rows to all connected clients
+            socketio.emit("update_table", {"rows": updated_rows, "page": page})
+
             new_points_in = remaining_points_in
 
-            oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
-
-            if oldest_row_points_out is None:
+            # Break the loop if there are no more rows in dublbubl
+            if row_count == 0 or new_points_in <= 0:
                 break
         
         return redirect("/")
@@ -285,9 +352,8 @@ def index():
         return render_template('index.html', dublbubl=dublbubl, user=user, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, page=page, total_pages=total_pages)
 
 
-
-
-
+if __name__ == "__main__":
+    socketio.run(app, debug=True)
 
 
 
