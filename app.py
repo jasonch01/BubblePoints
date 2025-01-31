@@ -202,6 +202,10 @@ def index():
         # Fetch user's point balance
         current_points = cur.execute("SELECT points FROM users WHERE id = ?", (user[0],)).fetchone()
         current_points = current_points[0] if current_points else 0  # Default to 0 if no value exists
+        
+        # Ensure user has enough points     
+        if current_points < points:
+            return "not enough points"
 
         try:
             # Insert row into dublbubl
@@ -212,6 +216,11 @@ def index():
 
             # Deduct from total points and update it in the database
             total_points = current_points - points
+
+            # Check total points is not negative
+            if total_points < 0:
+                return "Error: Insufficient points balance."
+
             cur.execute("UPDATE users SET points = ? WHERE id = ?", (total_points, user[0]))
             # Commit the changes to the dublbubl database
             con.commit()
@@ -222,10 +231,11 @@ def index():
             }, room=user[0])  # Emits only to the specific user
             print(f"Emitting update to room: {user[0]} with new balance: {total_points}")
 
+
         except Exception as e:
             print(f"Error inserting row into dublbubl: {e}")
             con.rollback()
-
+            
             
 
 
@@ -310,12 +320,14 @@ def index():
                 # Update current_total_points to reflect new total
                 current_total_points = total_points_earned
 
+                updated_total_points = cur.execute("SELECT points FROM users WHERE id = ?",(user_id,)).fetchone()
+                updated_total_points = updated_total_points[0] if updated_total_points else 0
+
                 # Emit an event to update the user's points balance in real-time
                 socketio.emit("update_point_balance", {
-                    "username": user[1], 
-                    "point_balance": total_points
-                }, room=user[0])  # Emits only to the specific user
-                print(f"Emitting update to room: {user[0]} with new balance: {total_points}")
+                    "point_balance": updated_total_points  # Only emitting the total points balance
+                }, room=user_id)  # Emits only to the specific user
+                print(f"Emitting update to room: {user_id} with new balance: {updated_total_points}")
 
 
             #Delete the oldest row from dublbubl    
