@@ -186,7 +186,7 @@ var socket = io();
 
 // Listen for user history updates
 socket.on("update_user_history", function (data) {
-    console.log("Received user history update:", data.history);
+    console.log("Received user history update:", data.history);  // Log the history data
 
     let historyContainer = document.getElementById("user-history");
     if (!historyContainer) {
@@ -198,6 +198,8 @@ socket.on("update_user_history", function (data) {
 
     if (data && Array.isArray(data.history)) {
         data.history.forEach(function (item) {
+            console.log("History item:", item);  // Log each history item being appended
+
             let row = document.createElement("tr");
             row.innerHTML = `
                 <td>${item.bubble_number}</td>

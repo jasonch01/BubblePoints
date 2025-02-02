@@ -161,7 +161,7 @@ def index():
             # Fetch the user details
             user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchall()
             # Fetch the last 5 user's dublbubl history
-            user_history = cur.execute("SELECT * FROM dublbubl_history WHERE user_id = ? ORDER BY row_id DESC LIMIT 5", (user_id,)).fetchall()
+            user_history = cur.execute("SELECT * FROM dublbubl_history WHERE creator_id = ? ORDER BY row_id DESC LIMIT 5", (user_id,)).fetchall()
         else:
             user = None
             user_history = None
@@ -338,8 +338,16 @@ def index():
                 # Fetch the latest 5 history records from all users
                 updated_user_history = cur.execute("""
                     SELECT * FROM dublbubl_history 
-                    ORDER BY row_id DESC LIMIT 5
-                """).fetchall()
+                    WHERE creator_id = ?
+                    ORDER BY row_id DESC 
+                    LIMIT 5
+                """, (user[0],)).fetchall()
+
+                print(f"Checking user[0]: {user[0]}")
+
+                # Print the user_id and the fetched history to debug
+                print(f"Fetching history for creator_id: {user[0]}")
+                print("Fetched history:", updated_user_history)
 
                 # Emit an event to update the user's history in real-time
                 socketio.emit("update_user_history", {
