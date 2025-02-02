@@ -146,6 +146,8 @@ def index():
         # Fetch current points_in from points_tracker
         current_points_in = cur.execute("SELECT current_points_in FROM points_tracker").fetchone()
 
+
+
         # Fetch the oldest row's points_out
         oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
 
@@ -168,9 +170,21 @@ def index():
         print("Error: dublbubl_history table does not exist, creating it.")
         init_db()
 
-    # Initialize points_in_required
-    points_in_required = oldest_row_points_out[0] - current_points_in[0]
+    # Handle None values for current_points_in and oldest_row_points_out
+    if current_points_in is None or oldest_row_points_out is None:
+        print("Error: current_points_in or oldest_row_points_out is None.")
+        points_in_required = 0  # Default value
+    else:
+        # Perform the calculation only if both values are valid
+        points_in_required = oldest_row_points_out[0] - current_points_in[0]
+        
 
+
+    # Emit real-time update for current_points_in and points_in_required
+    socketio.emit("update_points_info", {
+        "current_points_in": current_points_in[0],  # Emitting the actual points_in value
+        "points_in_required": points_in_required  # Emitting the calculated points_in_required
+    })  # Broadcasts to all connected clients
 
     points = request.form.get("points")
     current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -214,6 +228,19 @@ def index():
             VALUES (?, ?, ?, ?, ?, ?)
             """, (None, user[0], user[1], points, (points * 2), current_date))
 
+            # Commit the changes to the dublbubl database
+            con.commit()
+
+            # Fetch the updated rows after the insertion
+            updated_rows = cur.execute("""
+                SELECT * FROM dublbubl
+                ORDER BY row_id ASC
+                LIMIT ? OFFSET ?
+            """, (rows_per_page, offset)).fetchall()
+
+            # Emit the updated rows to all connected clients
+            socketio.emit("update_table", {"rows": updated_rows, "page": page})
+
             # Deduct from total points and update it in the database
             total_points = current_points - points
 
@@ -254,9 +281,14 @@ def index():
 
             # Commit the changes to the points_tracker database   
             con.commit()
+
         else:
             # If there is only one row, don't update points in points_tracker
             new_points_in = current_points_in[0] if current_points_in else 0
+
+
+
+
 
         oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
 
@@ -269,13 +301,31 @@ def index():
             oldest_row_id = cur.execute("SELECT row_id FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
             oldest_row = cur.execute("SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
 
-            # Fetch user's current total points
-            current_total_points = cur.execute("SELECT total_points_earned FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
-            current_total_points = current_total_points[0] if current_total_points else 0  # Default to 0 if no value exists
+            # Ensure that oldest_row is not None before checking total points
+            if oldest_row is not None:
+                    # Fetch user's current total points
+                    current_total_points = cur.execute("SELECT total_points_earned FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
 
-            # Fetch user's point balance
-            points = cur.execute("SELECT points FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
-            points = points[0] if points else 0  # Default to 0 if no value exists
+                    if current_total_points is None:
+                        print("No points found for this user.")
+                        current_total_points = 0  # Default to 0 if no value exists
+                    else:
+                        current_total_points = current_total_points[0]  # Extract the value from the tuple
+
+                    print(f"Current total points: {current_total_points}")
+
+                    # Fetch user's point balance only if oldest_row is not None
+                    points = cur.execute("SELECT points FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
+
+                    if points is None:
+                        print("No points balance found for this user.")
+                        points = 0  # Default to 0 if no value exists
+                    else:
+                        points = points[0]  # Extract the value from the tuple
+
+                    print(f"User's point balance: {points}")
+            else:
+                print("Oldest row is None, skipping points check.")
 
             #Insert the oldest row into dublbubl_history
             if oldest_row:
@@ -351,6 +401,9 @@ def index():
 
             # Emit the updated rows to all connected clients
             socketio.emit("update_table", {"rows": updated_rows, "page": page})
+
+            # Ensure the update is triggered only after database changes
+            print(f"Emitting updated rows to room: {user[0]}")
 
             new_points_in = remaining_points_in
 

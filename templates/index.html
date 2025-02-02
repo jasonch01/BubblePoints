@@ -74,8 +74,8 @@
 
 <figure class="text-center">
   <blockquote class="blockquote">
-    <p>Accumulated Points: {{ current_points_in[0] }}</p>
-    <p>Points Needed to Pop Next Bubble: {{ points_in_required }}</p>
+    <p id="current_points_in">Accumulated Points: {{ current_points_in[0] }}</p>
+    <p id="points_in_required">Points Needed to Pop Next Bubble: {{ points_in_required }}</p>
   </blockquote>
 </figure>
 
@@ -241,6 +241,15 @@ socket.on("update_user_history", function (data) {
         console.error("Point balance or element is invalid:", data);
     }
   });
+
+  // Listen for the real-time update from the server
+  socket.on('update_points_info', function(data) {
+    console.log("Received points_in_required:", data.points_in_required);  // For debugging
+    // Update the HTML with the new data
+    document.querySelector('#current_points_in').innerText = `Accumulated Points: ${data.current_points_in}`;
+    document.querySelector('#points_in_required').innerText = `Points Needed to Pop Next Bubble: ${data.points_in_required}`;
+  });
+
 
 
 
