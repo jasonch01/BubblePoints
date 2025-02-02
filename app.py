@@ -1,6 +1,8 @@
 import os
 import sqlite3
 import datetime
+import threading
+import time
 
 from secret_key import secret_key as default_key
 from dotenv import load_dotenv
@@ -87,6 +89,130 @@ def init_db():
 
 init_db()
 
+# Global flag to prevent multiple background tasks
+timer_running = False
+
+# Background countdown timer using socketio.start_background_task()
+def countdown_timer():
+    global timer_running  # Use the global flag to control the task state
+    while True:
+        # Open a new database connection to get the last row's timestamp
+        thread_con = sqlite3.connect("dublbubl.db", check_same_thread=False)
+        thread_cur = thread_con.cursor()
+
+        last_row = thread_cur.execute("SELECT date_created FROM dublbubl ORDER BY row_id DESC LIMIT 1").fetchone()
+
+        if last_row:
+            last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
+        else:
+            last_timestamp = None
+
+        # This will be the main loop where the timer will wait for a new row
+        while last_timestamp:
+            current_time = datetime.datetime.now()
+
+            # Calculate the remaining time until 30 seconds is reached
+            remaining_time = 30 - int((current_time - last_timestamp).total_seconds())
+
+            # If the remaining time is greater than 0, update the timer and sleep for 1 second
+            if remaining_time > 0:
+                formatted_time = f"00:00:{remaining_time:02d}"
+                socketio.emit("update_timer", {"time": formatted_time})  # Emit the remaining time to frontend
+                time.sleep(1)  # Sleep for 1 second before checking again
+            else:
+                # If 30 seconds have passed, perform the cleanup
+                formatted_time = "00:00:00"  # Emit 00:00:00 when time runs out
+                print("30 seconds elapsed with no new row. Clearing dublbubl table.")
+                thread_cur.execute("DELETE FROM dublbubl")
+                thread_con.commit()
+
+                # Reset current_points_in to 0 in points_tracker table
+                thread_cur.execute("UPDATE points_tracker SET current_points_in = 0")
+                thread_con.commit()
+
+                # Emit an empty table to the front-end
+                socketio.emit("update_table", {"rows": [], "page": 1})  # Notify frontend of table reset
+
+                # Emit the reset points to the frontend
+                socketio.emit("update_points", {"current_points_in": 0})  # Notify frontend of points reset
+
+                # Emit real-time update for current_points_in and points_in_required
+                current_points_in = thread_cur.execute("SELECT current_points_in FROM points_tracker").fetchone()
+                points_in_required = 0  # Default value 
+
+                if current_points_in is None or points_in_required is None:
+                    print("Error: current_points_in or points_in_required is None.")
+                    points_in_required = 0  # Default value
+
+                print(f"Emitting points info: {current_points_in[0]}, {points_in_required}")
+                socketio.emit("update_points_info", {
+                    "current_points_in": current_points_in[0],  # Emitting the actual points_in value
+                    "points_in_required": points_in_required  # Emitting the calculated points_in_required
+                })  # Broadcasts to all connected clients
+
+                # Reset the timer_running flag to allow starting the timer again
+                timer_running = False
+
+                break  # Exit the loop and reset the process
+
+            # Check if a new row has been added, and update the timestamp if necessary
+            last_row = thread_cur.execute("SELECT date_created FROM dublbubl ORDER BY row_id DESC LIMIT 1").fetchone()
+            if last_row:
+                new_last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
+                if new_last_timestamp > last_timestamp:
+                    last_timestamp = new_last_timestamp
+                    continue  # A new row has been added, restart the timer
+
+        # Close the thread-specific connection
+        thread_con.close()
+
+        time.sleep(1)  # Sleep briefly before restarting the loop
+
+# Start countdown timer using background task
+def start_timer():
+    global timer_running
+    if not timer_running:
+        socketio.start_background_task(target=countdown_timer)   # Start the countdown in the background
+        timer_running = True # Set the flag to True, indicating the timer is running
+        print("Countdown timer background task started.")
+    else:
+        print("Timer already running.")
+
+
+@socketio.on('get_timer_state')
+def get_timer_state():
+    # Retrieve the current remaining time from the database or timer state
+    thread_con = sqlite3.connect("dublbubl.db", check_same_thread=False)
+    thread_cur = thread_con.cursor()
+
+    last_row = thread_cur.execute("SELECT date_created FROM dublbubl ORDER BY row_id DESC LIMIT 1").fetchone()
+
+    if last_row:
+        last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
+        current_time = datetime.datetime.now()
+        remaining_time = 30 - int((current_time - last_timestamp).total_seconds())
+        formatted_time = f"00:00:{remaining_time:02d}" if remaining_time > 0 else "00:00:00"
+    else:
+        formatted_time = "00:00:00"  # Default if no rows exist
+
+    # Emit the initial timer state to the front-end
+    socketio.emit('initial_timer_state', {'time': formatted_time})
+
+
+
+
+
+
+
+
+# Example Flask route to start the timer
+@app.route("/start_timer")
+def trigger_timer():
+    start_timer()
+    return "Timer started."
+
+
+
 
 @app.after_request
 def after_request(response):
@@ -117,6 +243,10 @@ def on_connect():
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+
+    # Start the timer when the user accesses the home page
+    start_timer()
+
     try:
         # Check database for dublbubl table
         dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
@@ -142,6 +272,8 @@ def index():
 
         # Calculate the total number of pages
         total_pages = (total_rows + rows_per_page - 1) // rows_per_page
+
+        
 
         # Fetch current points_in from points_tracker
         current_points_in = cur.execute("SELECT current_points_in FROM points_tracker").fetchone()
@@ -437,10 +569,11 @@ def index():
         return redirect("/")
         
     else:
-        return render_template('index.html', dublbubl=dublbubl, user=user, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, page=page, total_pages=total_pages)
+        return render_template('index.html', dublbubl=dublbubl, user=user, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
 
 
 if __name__ == "__main__":
+    start_timer()  # Start the countdown thread
     socketio.run(app, debug=True)
 
 

@@ -76,6 +76,7 @@
   <blockquote class="blockquote">
     <p id="current_points_in">Accumulated Points: {{ current_points_in[0] }}</p>
     <p id="points_in_required">Points Needed to Pop Next Bubble: {{ points_in_required }}</p>
+    <div id="countdown_timer">00:00:00</div>
   </blockquote>
 </figure>
 
@@ -137,7 +138,6 @@
 
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script>
-
 var user_id = "{{ session['user_id'] }}"; // Dynamically set the user ID from the session or context
 
 // Connect to the server via Socket.IO, passing the user ID
@@ -158,6 +158,36 @@ var socket = io();
       return "table-success";
     }
   }
+
+  const timerElement = document.getElementById("countdown_timer");
+
+
+  // Listen for the timer update event
+  socket.on("update_timer", (data) => {
+      if (timerElement) {
+          let time = data.time;
+          
+          // If the time is '00:00:01' and the timer should have ended, force it to '00:00:00'
+          if (time === '00:00:01') {
+              time = '00:00:00';
+          }
+
+          // Update the displayed timer
+          timerElement.textContent = time;
+      }
+  });
+
+
+  // Optionally handle the timer state response from the server
+  socket.on('initial_timer_state', function(data) {
+      const time = data.time;  // Get the initial time from the server
+      // Set the correct initial value
+      document.getElementById('countdown_timer').innerText = time;
+  });
+
+
+
+
 
   // Listen for "update_table" events from the server
   socket.on("update_table", (data) => {
@@ -251,6 +281,7 @@ socket.on("update_user_history", function (data) {
     document.querySelector('#current_points_in').innerText = `Accumulated Points: ${data.current_points_in}`;
     document.querySelector('#points_in_required').innerText = `Points Needed to Pop Next Bubble: ${data.points_in_required}`;
   });
+
 
 
 
