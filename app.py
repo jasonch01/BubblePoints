@@ -263,7 +263,8 @@ def index():
             print(f"Error inserting row into dublbubl: {e}")
             con.rollback()
             
-            
+        # Fetch current_points_in value
+        current_points_in = cur.execute("SELECT current_points_in FROM points_tracker").fetchone()    
 
 
         # Fetch the number of rows in dublbubl
@@ -273,6 +274,7 @@ def index():
 
         # Add points_in to points_tracker only if dublbubl has more than 1 row
         if row_count > 1:
+
             if current_points_in:
                 new_points_in = current_points_in[0] + points
                 cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (new_points_in, current_date))
@@ -283,141 +285,154 @@ def index():
             con.commit()
 
         else:
-            # If there is only one row, don't update points in points_tracker
+            # If there is one row, don't update points in points_tracker
             new_points_in = current_points_in[0] if current_points_in else 0
-
-
-
+            print(f"New points in is { new_points_in }")
 
 
         oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
-
         
+        # Print to debug
+        print(f"Oldest row points out: {oldest_row_points_out[0]}")
 
-        # If total points added exceed twice the oldest row's points, delete the oldest row
-        while new_points_in >= oldest_row_points_out[0]:
+        # Check if there are no rows or if points_out is None
+        if oldest_row_points_out is None:
+            print("No rows found in dublbubl. Exiting loop.")
+        else:
+            # If total points added exceed twice the oldest row's points, delete the oldest row
+            while new_points_in >= oldest_row_points_out[0]:
 
-            # Get the row ID of the oldest row
-            oldest_row_id = cur.execute("SELECT row_id FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
-            oldest_row = cur.execute("SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
+                
 
-            # Ensure that oldest_row is not None before checking total points
-            if oldest_row is not None:
-                    # Fetch user's current total points
-                    current_total_points = cur.execute("SELECT total_points_earned FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
+                # Get the row ID of the oldest row
+                oldest_row_id = cur.execute("SELECT row_id FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
+                oldest_row = cur.execute("SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
 
-                    if current_total_points is None:
-                        print("No points found for this user.")
-                        current_total_points = 0  # Default to 0 if no value exists
-                    else:
-                        current_total_points = current_total_points[0]  # Extract the value from the tuple
 
-                    print(f"Current total points: {current_total_points}")
 
-                    # Fetch user's point balance only if oldest_row is not None
-                    points = cur.execute("SELECT points FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
+                # Ensure that oldest_row is not None before checking total points
+                if oldest_row is not None:
+                        # Fetch user's current total points
+                        current_total_points = cur.execute("SELECT total_points_earned FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
 
-                    if points is None:
-                        print("No points balance found for this user.")
-                        points = 0  # Default to 0 if no value exists
-                    else:
-                        points = points[0]  # Extract the value from the tuple
+                        if current_total_points is None:
+                            print("No points found for this user.")
+                            current_total_points = 0  # Default to 0 if no value exists
+                        else:
+                            current_total_points = current_total_points[0]  # Extract the value from the tuple
 
-                    print(f"User's point balance: {points}")
-            else:
-                print("Oldest row is None, skipping points check.")
+                        print(f"Current total points: {current_total_points}")
 
-            #Insert the oldest row into dublbubl_history
-            if oldest_row:
-                cur.execute("""
-                INSERT INTO dublbubl_history (user_id, username, row_id, creator_id, creator_username, points_in, points_out, date_created, date_archived)
-                VALUES (?, ? ,?, ?, ? ,?, ?, ?, ?)
-                """, (user[0], user[1], oldest_row[0], oldest_row[1], oldest_row[2], oldest_row[3], oldest_row[4], oldest_row[5], current_date))
+                        # Fetch user's point balance only if oldest_row is not None
+                        points = cur.execute("SELECT points FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
+
+                        if points is None:
+                            print("No points balance found for this user.")
+                            points = 0  # Default to 0 if no value exists
+                        else:
+                            points = points[0]  # Extract the value from the tuple
+
+                        print(f"User's point balance: {points}")
+                else:
+                    print("Oldest row is None, skipping points check.")
+
+                #Insert the oldest row into dublbubl_history
+                if oldest_row:
+                    cur.execute("""
+                    INSERT INTO dublbubl_history (user_id, username, row_id, creator_id, creator_username, points_in, points_out, date_created, date_archived)
+                    VALUES (?, ? ,?, ?, ? ,?, ?, ?, ?)
+                    """, (user[0], user[1], oldest_row[0], oldest_row[1], oldest_row[2], oldest_row[3], oldest_row[4], oldest_row[5], current_date))
+                    con.commit()
+
+                    # Fetch the latest 5 history records from all users
+                    updated_user_history = cur.execute("""
+                        SELECT * FROM dublbubl_history 
+                        WHERE creator_id = ?
+                        ORDER BY row_id DESC 
+                        LIMIT 5
+                    """, (user[0],)).fetchall()
+
+                    print(f"Checking user[0]: {user[0]}")
+
+                    # Print the user_id and the fetched history to debug
+                    print(f"Fetching history for creator_id: {user[0]}")
+                    print("Fetched history:", updated_user_history)
+
+                    # Emit an event to update the user's history in real-time
+                    socketio.emit("update_user_history", {
+                        "history": [
+                            {
+                                "bubble_number": row[3], 
+                                "points_invested": row[6], 
+                                "points_earned": row[7], 
+                                "created_on": row[8], 
+                                "archived_on": row[9]
+                            } for row in updated_user_history
+                        ]
+                    }, room=user[0])  # Emits only to the specific user
+                    print(f"Emitting update to room: {user[0]} with updated user history: {oldest_row[4]}")
+
+
+
+                    # Add total_points_earned and update it in the database
+                    total_points_earned = current_total_points + oldest_row[4]
+                    cur.execute("UPDATE users SET total_points_earned = ? WHERE id = ?", (total_points_earned, oldest_row[1]))
+                    con.commit()
+
+                    # Add total points and update it in the database
+                    total_points = points + oldest_row[4]
+                    cur.execute("UPDATE users SET points = ? WHERE id = ?", (total_points, oldest_row[1]))
+                    con.commit() 
+    
+                    # Update current_total_points to reflect new total
+                    current_total_points = total_points_earned
+
+                    updated_total_points = cur.execute("SELECT points FROM users WHERE id = ?",(user_id,)).fetchone()
+                    updated_total_points = updated_total_points[0] if updated_total_points else 0
+
+                    # Emit an event to update the user's points balance in real-time
+                    socketio.emit("update_point_balance", {
+                        "point_balance": updated_total_points  # Only emitting the total points balance
+                    }, room=user_id)  # Emits only to the specific user
+                    print(f"Emitting update to room: {user_id} with new balance: {updated_total_points}")
+
+
+                # Check if oldest_row_id is not None before attempting to delete the row
+                if oldest_row_id is not None:
+                    cur.execute("DELETE FROM dublbubl WHERE row_id = ?", (oldest_row_id[0],))
+                    con.commit()
+                else:
+                    print("Error: oldest_row_id is None, unable to delete row.")
+
+                # Calculate the remaining points in points_tracker
+                remaining_points_in = new_points_in - oldest_row_points_out[0]
+
+                # Update points_tracker with the remaining points
+                cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (remaining_points_in, current_date))
                 con.commit()
 
-                # Fetch the latest 5 history records from all users
-                updated_user_history = cur.execute("""
-                    SELECT * FROM dublbubl_history 
-                    WHERE creator_id = ?
-                    ORDER BY row_id DESC 
-                    LIMIT 5
-                """, (user[0],)).fetchall()
 
-                print(f"Checking user[0]: {user[0]}")
+                # Fetch the updated rows to send to the front-end
+                updated_rows = cur.execute("""
+                    SELECT * FROM dublbubl
+                    ORDER BY row_id ASC
+                    LIMIT ? OFFSET ?
+                """, (rows_per_page, offset)).fetchall()
 
-                # Print the user_id and the fetched history to debug
-                print(f"Fetching history for creator_id: {user[0]}")
-                print("Fetched history:", updated_user_history)
+                # Emit the updated rows to all connected clients
+                socketio.emit("update_table", {"rows": updated_rows, "page": page})
 
-                # Emit an event to update the user's history in real-time
-                socketio.emit("update_user_history", {
-                    "history": [
-                        {
-                            "bubble_number": row[3], 
-                            "points_invested": row[6], 
-                            "points_earned": row[7], 
-                            "created_on": row[8], 
-                            "archived_on": row[9]
-                        } for row in updated_user_history
-                    ]
-                }, room=user[0])  # Emits only to the specific user
-                print(f"Emitting update to room: {user[0]} with updated user history: {oldest_row[4]}")
+                # Ensure the update is triggered only after database changes
+                print(f"Emitting updated rows to room: {user[0]}")
 
+                new_points_in = remaining_points_in
 
+                oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
 
-                # Add total_points_earned and update it in the database
-                total_points_earned = current_total_points + oldest_row[4]
-                cur.execute("UPDATE users SET total_points_earned = ? WHERE id = ?", (total_points_earned, oldest_row[1]))
-                con.commit()
-
-                # Add total points and update it in the database
-                total_points = points + oldest_row[4]
-                cur.execute("UPDATE users SET points = ? WHERE id = ?", (total_points, oldest_row[1]))
-                con.commit() 
-  
-                # Update current_total_points to reflect new total
-                current_total_points = total_points_earned
-
-                updated_total_points = cur.execute("SELECT points FROM users WHERE id = ?",(user_id,)).fetchone()
-                updated_total_points = updated_total_points[0] if updated_total_points else 0
-
-                # Emit an event to update the user's points balance in real-time
-                socketio.emit("update_point_balance", {
-                    "point_balance": updated_total_points  # Only emitting the total points balance
-                }, room=user_id)  # Emits only to the specific user
-                print(f"Emitting update to room: {user_id} with new balance: {updated_total_points}")
-
-
-            #Delete the oldest row from dublbubl    
-            cur.execute("DELETE FROM dublbubl WHERE row_id = ?", (oldest_row_id[0],))
-            con.commit()
-
-            # Calculate the remaining points in points_tracker
-            remaining_points_in = new_points_in - oldest_row_points_out[0]
-
-            # Update points_tracker with the remaining points
-            cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (remaining_points_in, current_date))
-            con.commit()
-
-
-            # Fetch the updated rows to send to the front-end
-            updated_rows = cur.execute("""
-                SELECT * FROM dublbubl
-                ORDER BY row_id ASC
-                LIMIT ? OFFSET ?
-            """, (rows_per_page, offset)).fetchall()
-
-            # Emit the updated rows to all connected clients
-            socketio.emit("update_table", {"rows": updated_rows, "page": page})
-
-            # Ensure the update is triggered only after database changes
-            print(f"Emitting updated rows to room: {user[0]}")
-
-            new_points_in = remaining_points_in
-
-            # Break the loop if there are no more rows in dublbubl
-            if row_count == 0 or new_points_in <= 0:
-                break
+                # Break the loop if there are no more rows in dublbubl
+                if new_points_in <= 0 or oldest_row_points_out is None:
+                    print("No more rows in dublbubl. Exiting loop.")
+                    break
         
         return redirect("/")
         
