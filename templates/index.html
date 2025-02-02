@@ -73,16 +73,19 @@
 {% endif %}
 
 <div class="tracker text-center">
-    <p id="current_points_in">Accumulated Points: {{ current_points_in[0] }}</p>
-    <p id="points_in_required">Points to Next Bubble Pop : {{ points_in_required }}</p>
-    <div class="low-time" id="countdown_timer">00:00:00</div>
+  <p id="current_points_in">Accumulated Points: {{ current_points_in[0] }}</p>
+  <p id="points_in_required">Points to Next Bubble Pop: {{ points_in_required }}</p>
+  <div class="timer-container">
+      <span class="reset-timer-text">Reset Timer: </span>
+      <span id="countdown_timer" class="low-time">00:00:00</span>
+  </div>
 </div>
 
 
 <table class="table table-success table-sm text-center">
   <thead class="table-primary">
     <tr class="table-primary">
-      <th class="table-primary" colspan="5"><span class="blue">dub</span><span class="red">l</span><span class="yellow">bub</span><span class="green">l</span></th>
+      <th class="table-primary" colspan="5"><div class="table-header"><span class="blue">dub</span><span class="red">l</span><span class="yellow">bub</span><span class="green">l</span></div></th>
     </tr>
   </thead>          
   <thead>

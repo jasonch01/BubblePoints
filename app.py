@@ -199,17 +199,15 @@ def get_timer_state():
     socketio.emit('initial_timer_state', {'time': formatted_time})
 
 
-
-
-
-
-
-
 # Example Flask route to start the timer
 @app.route("/start_timer")
 def trigger_timer():
     start_timer()
     return "Timer started."
+
+
+
+
 
 
 

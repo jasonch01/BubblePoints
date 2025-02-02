@@ -42,7 +42,9 @@ footer {
 
 
 
-
+.table-header {
+    font-size: 1.1rem;
+}
 
 
 /* Colors for dublbubl*/
@@ -81,9 +83,6 @@ footer {
   }
 
   
-
-
-
 
 .dashboard {
     margin: 1em auto;
@@ -173,9 +172,6 @@ button.btn-primary:hover {
 
 
 
-
-
-
 /* Apply only to forms with the class 'login-form' */
 .login-form {
     display: flex;
@@ -207,3 +203,82 @@ button.btn-primary:hover {
 .login-form button.btn-primary:hover {
     background-color: #34495E;
 }
+
+
+/* Flex container to align text and timer */
+.timer-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+}
+
+/* Styling for the reset timer text */
+.reset-timer-text {
+    font-weight: bold;
+    font-size: 1.8rem;
+}
+
+
+
+/* Specific styles for the leaderboard */
+.leaderboard {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+  }
+  
+  .leaderboard-table {
+    width: 80%;
+    max-width: 600px;
+    background-color: #fff;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-collapse: collapse;
+  }
+  
+  .leaderboard-header {
+    background-color: #C3D9C8;  /* Soft background for the Leaderboard title */
+    color: #333;
+    font-weight: bold;
+  }
+  
+  .leaderboard-header-row {
+    background-color: #4CAF50; /* Light green background for the header row */
+    color: white;              /* White text for better contrast */
+  }
+  
+  .leaderboard-header th {
+    padding: 10px;
+  }
+  
+  .leaderboard-row {
+    background-color: #fafafa;
+    border-bottom: 1px solid #ddd;
+    transition: background-color 0.3s ease;
+  }
+  
+  .leaderboard-row:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .leaderboard-row td {
+    padding: 10px;
+    text-align: center;
+  }
+  
+  .text-center {
+    text-align: center;
+  }
+  
+  /* Adding color schemes for better readability */
+  .leaderboard-row:nth-child(even) {
+    background-color: #f1f1f1;
+  }
+  
+  .leaderboard-row:hover {
+    background-color: #e0e0e0;
+    cursor: pointer;
+  }

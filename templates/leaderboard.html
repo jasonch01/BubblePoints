@@ -4,19 +4,30 @@
 
 
 <div class="container d-flex justify-content-center align-items-center leaderboard">
-  <ul class="list-group shadow-sm" style="width: 300px">
-    <li class="list-group-item text-center text-white border-0" style="background: #1E1E1E;">
-      <h3 class="fw-normal">Leaderboard</h3>
-    </li>
-    {% for user in user %}
-    <li class="list-group-item d-flex justify-content-between text-white border-0" style="background: #FF5E5E; display: flex; justify-content: space-between;">
-      <span>{{ loop.index }}</span>
-      <span>{{ user[0] }} </span>
-      <span>{{ user[1] }}</span>
-    </li>
-    {% endfor %}
-  </ul>
+  <table class="leaderboard-table">
+    <thead>
+      <tr class="leaderboard-header">
+        <th colspan="3" class="text-center">Leaderboard (Top 5)</th>
+      </tr>
+      <tr class="leaderboard-header-row">
+        <th class="text-center">Rank</th>
+        <th class="text-center">Username</th>
+        <th class="text-center">Points</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in user %}
+      <tr class="leaderboard-row">
+        <td class="text-center">{{ loop.index }}</td>
+        <td class="text-center">{{ user[0] }}</td>
+        <td class="text-center">{{ user[1] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
+
+
 
 
 {% endblock %}
