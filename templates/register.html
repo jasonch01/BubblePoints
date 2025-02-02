@@ -2,15 +2,13 @@
 
 {% block main %}
 
-<form action="/register" method="post">
-  <div class="mb-3">
-      <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username" type="text">
-  </div>
-  <div class="mb-3">
-      <input class="form-control mx-auto w-auto" name="password" placeholder="Create a password" type="password">
-      <input class="form-control mx-auto w-auto" name="confirmation" placeholder="Confirm password" type="password">
-  </div>
-  <button class="btn btn-primary" type="submit">Register</button>
-</form>
+<div class="d-flex flex-column align-items-center min-vh-100">
+  <form action="/register" method="post" class="login-form w-100" style="max-width: 400px;">
+    <input autocomplete="off" autofocus class="form-control" name="username" placeholder="Username" type="text">
+    <input class="form-control" name="password" placeholder="Create a password" type="password">
+    <input class="form-control" name="confirmation" placeholder="Confirm password" type="password">
+    <button class="btn btn-primary w-100" type="submit">Register</button>
+  </form>
+</div>
 
 {% endblock %}

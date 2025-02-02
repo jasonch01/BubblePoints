@@ -354,11 +354,21 @@ def index():
             return "not enough points"
 
         try:
+            # Calculate the multiplier based on points_in
+            if points >= 10000:
+                points_out = points * 2  # If points are 10,000 or more, multiply by 2
+            elif points >= 5000:
+                points_out = points * 1.75  # If points are 5,000 or more but less than 10,000, multiply by 1.75
+            elif points >= 1000:
+                points_out = points * 1.5  # If points are 1,000 or more but less than 10,000, multiply by 1.5
+            else:
+                points_out = points * 1.25  # Otherwise, points_out equals points_in (e.g., for smaller amounts)
+
             # Insert row into dublbubl
             cur.execute("""
             INSERT INTO dublbubl (row_id, user_id, username, points_in, points_out, date_created)
             VALUES (?, ?, ?, ?, ?, ?)
-            """, (None, user[0], user[1], points, (points * 2), current_date))
+            """, (None, user[0], user[1], points, (points_out), current_date))
 
             # Commit the changes to the dublbubl database
             con.commit()

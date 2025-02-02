@@ -12,11 +12,40 @@ html {
     font-size: 1rem;
 }
 
-body {
+html body {
    height: 100vh;
+   margin: 0;
+   display: flex;
+   flex-direction: column;
+   background-color: #F0F4F8; /* Soft, neutral background */
+   color: #333; /* Dark text for contrast */
 }
 
-/* Colors for brand */
+body {
+    font-family: 'Open Sans', sans-serif;
+  }
+
+
+main {
+    flex-grow: 1; /* This pushes the footer to the bottom */
+    margin-bottom: 5em; /* Adjust this value to increase space */
+}
+
+
+
+footer {
+    background-color: #f8f9fa;
+    padding: 20px 0;
+    text-align: center;
+    width: 100%;
+}
+
+
+
+
+
+
+/* Colors for dublbubl*/
 .blue
 {
     color: #537fbe;
@@ -34,10 +63,27 @@ body {
     color: #2e944b;
 }
 
-form {
-    text-align: center;
-    margin: 1em auto;
-}
+
+
+.gradient-text {
+    background: linear-gradient(to right, #6fa3ff, #a0c4ff); /* Gradient from light blue to pastel blue */
+    -webkit-background-clip: text;
+    color: transparent;
+    font-family: 'Poppins', sans-serif;
+    font-weight: bold;
+  }
+  
+  .points-text {
+    color: #5f6368; /* Subtle dark grey */
+    font-family: 'Poppins', sans-serif;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  
+
+
+
 
 .dashboard {
     margin: 1em auto;
@@ -47,3 +93,117 @@ form {
     margin: 1em auto;
 }
 
+.tracker {
+    margin: 1em auto;
+}
+
+
+
+/* Form and button styling */
+form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px; /* Added space between input and button */
+}
+
+input.form-control {
+    background-color: #F0F4F8; /* Soft muted sage gray */
+    border: 1px solid #C9D6DF; /* Muted border */
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: 1rem;
+}
+
+button.btn-primary {
+    background-color: #2C3E50; /* Dark blue-gray background */
+    color: white; /* White text for contrast */
+    border: none;
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 8px;
+    transition: background-color 0.3s;
+}
+
+button.btn-primary:hover {
+    background-color: #34495E; /* Slightly lighter blue-gray on hover */
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Text block styling */
+#current_points_in, #points_in_required {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #4A4E58; /* Soft charcoal for text */
+    background-color: #C3D9C8; /* Soft muted green for points_in */
+    padding: 12px 18px;
+    border-radius: 8px;
+    display: inline-block;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+    margin: 10px 0;
+}
+
+#points_in_required {
+    background-color: #F6A7A9; /* Brighter soft red for points_in_required */
+    color: #4A4E58; /* Soft charcoal text */
+    padding: 12px 18px;
+    border-radius: 8px;
+    display: inline-block;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#countdown_timer {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #4A4E58; /* Soft charcoal */
+    padding: 12px 15px;
+}
+
+
+
+
+
+
+
+/* Apply only to forms with the class 'login-form' */
+.login-form {
+    display: flex;
+    flex-direction: column;  /* Stack elements vertically */
+    justify-content: center;
+    align-items: center;
+    gap: 15px; /* Space between input fields and button */
+    margin-top: 1em;
+}
+
+.login-form input.form-control {
+    background-color: #F0F4F8;
+    border: 1px solid #C9D6DF;
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: 1rem;
+}
+
+.login-form button.btn-primary {
+    background-color: #2C3E50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 8px;
+    transition: background-color 0.3s;
+}
+
+.login-form button.btn-primary:hover {
+    background-color: #34495E;
+}

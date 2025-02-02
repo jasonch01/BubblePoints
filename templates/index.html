@@ -15,8 +15,8 @@
         </thead>          
         <thead class="table-light">
           <tr class="table-secondary">
-            <th class="table-secondary">username</th>
-            <th class="table-secondary">point balance</th>
+            <th class="table-secondary">Username</th>
+            <th class="table-secondary">Point balance</th>
           </tr>
         </thead>        
         <tbody id="point-balance">
@@ -40,11 +40,11 @@
         </thead>        
         <thead class="table-secondary">
           <tr class="table-secondary">
-            <th>bubble #</th>
-            <th>points invested</th>
-            <th>points earned</th>
-            <th>created on</th>
-            <th>archived on</th>
+            <th>Bubble #</th>
+            <th>Points invested</th>
+            <th>Points earned</th>
+            <th>Created on</th>
+            <th>Archived on</th>
           </tr>
         </thead>
         <tbody id="user-history">
@@ -72,13 +72,11 @@
 
 {% endif %}
 
-<figure class="text-center">
-  <blockquote class="blockquote">
+<div class="tracker text-center">
     <p id="current_points_in">Accumulated Points: {{ current_points_in[0] }}</p>
-    <p id="points_in_required">Points Needed to Pop Next Bubble: {{ points_in_required }}</p>
-    <div id="countdown_timer">00:00:00</div>
-  </blockquote>
-</figure>
+    <p id="points_in_required">Points to Next Bubble Pop : {{ points_in_required }}</p>
+    <div class="low-time" id="countdown_timer">00:00:00</div>
+</div>
 
 
 <table class="table table-success table-sm text-center">
@@ -89,11 +87,11 @@
   </thead>          
   <thead>
     <tr class="table-secondary">
-      <th>bubble #</th>
-      <th>username</th>
-      <th>points invested</th>
-      <th>points to be earned</th>
-      <th>created on</th>
+      <th>Bubble #</th>
+      <th>Username</th>
+      <th>Points invested</th>
+      <th>Points return</th>
+      <th>Created on</th>
     </tr>
   </thead>
   <tbody id="dublbubl">
