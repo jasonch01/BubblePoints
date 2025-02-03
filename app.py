@@ -365,6 +365,8 @@ def index():
         if points is None:
             return "Invalid Input"
         elif points <= 0 or points > 10000:
+            print(f"current_points_in: {current_points_in}, points_in_required: {points_in_required}")
+            print(f"User fetched: {user}")
             return render_template("index.html", message="Points must be between 1 and 10000", 
                            current_points_in=current_points_in, points_in_required=points_in_required, user=user,
                            user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
@@ -381,6 +383,7 @@ def index():
         
         # Ensure user has enough points     
         if current_points < points:
+            user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchall()
             return render_template("index.html", message="Not enough points", 
                            current_points_in=current_points_in, points_in_required=points_in_required, user=user,
                            user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
