@@ -71,12 +71,17 @@
 
 &nbsp;
 
-<!-- Show messages dynamically -->
-{% if message %}
-    <div class="alert {% if 'Invalid' in message %}alert-danger{% elif 'success' in message %}alert-success{% else %}alert-warning{% endif %} text-center">
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class=" text-center alert alert-{{ category }} alert-dismissible fade show" role="alert">
         {{ message }}
-    </div>
-{% endif %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
 
 {% endif %}
@@ -293,7 +298,14 @@ socket.on("update_user_history", function (data) {
   });
 
 
-
+  setTimeout(function() {
+    let alerts = document.querySelectorAll(".alert");
+    alerts.forEach(alert => {
+      let bsAlert = new bootstrap.Alert(alert);
+      bsAlert.close();
+    });
+  }, 5000); // 5 seconds
+  
 
 
 </script>

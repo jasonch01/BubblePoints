@@ -8,7 +8,7 @@ import re
 from secret_key import secret_key as default_key
 from dotenv import load_dotenv
 
-from flask import Flask, request, redirect, render_template, request, session
+from flask import Flask, request, redirect, render_template, request, session, flash, url_for
 from flask_socketio import SocketIO, emit, join_room
 from flask_session import Session
 from functools import wraps
@@ -359,26 +359,21 @@ def index():
         
         # Check points are entered
         if not points:
-            return render_template("index.html", message="No points entered", 
-                           current_points_in=current_points_in, points_in_required=points_in_required, user=user,
-                           user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
+            flash("No points entered", "danger")  # Use "danger" for errors
+            return redirect(url_for("index"))
         try:
             points = int(points)
         except ValueError:
-            return render_template("index.html", message="Invalid Input", 
-                           current_points_in=current_points_in, points_in_required=points_in_required, user=user,
-                           user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
+            flash("Invalid input", "danger")
+            return redirect(url_for("index"))
 
         # Check points are positive number
         if points is None:
             return "Invalid Input"
         elif points <= 0 or points > 10000:
-            print(f"current_points_in: {current_points_in}, points_in_required: {points_in_required}")
-            print(f"User fetched: {user}")
-            return render_template("index.html", message="Points must be between 1 and 10000", 
-                           current_points_in=current_points_in, points_in_required=points_in_required, user=user,
-                           user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
-        
+            flash("Points must be between 1 and 10000", "danger")
+            return redirect(url_for("index"))
+    
     
     
          # Check database for user details
@@ -391,10 +386,8 @@ def index():
         
         # Ensure user has enough points     
         if current_points < points:
-            user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchall()
-            return render_template("index.html", message="Not enough points", 
-                           current_points_in=current_points_in, points_in_required=points_in_required, user=user,
-                           user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
+            flash("Not enough points", "danger")
+            return redirect(url_for("index"))
 
         try:
             # Calculate the multiplier based on points_in
@@ -443,7 +436,7 @@ def index():
             }, room=user[0])  # Emits only to the specific user
             print(f"Emitting update to room: {user[0]} with new balance: {total_points}")
 
-
+ 
         except Exception as e:
             print(f"Error inserting row into dublbubl: {e}")
             con.rollback()
@@ -619,7 +612,8 @@ def index():
                     print("No more rows in dublbubl. Exiting loop.")
                     break
         
-        return redirect("/")
+        flash("Bubble created successfully!", "success")
+        return redirect(url_for("index"))
         
     else:
         return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
