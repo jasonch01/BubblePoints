@@ -3,6 +3,7 @@ import sqlite3
 import datetime
 import threading
 import time
+import re
 
 from secret_key import secret_key as default_key
 from dotenv import load_dotenv
@@ -44,7 +45,8 @@ def init_db():
         username TEXT NOT NULL,
         hash TEXT NOT NULL,
         points INTEGER NOT NULL DEFAULT 1000,
-        total_points_earned INTEGER NOT NULL DEFAULT 0
+        total_points_earned INTEGER NOT NULL DEFAULT 0,
+        email TEXT UNIQUE
     )
     """)
 
@@ -88,6 +90,22 @@ def init_db():
     """)
 
 init_db()
+
+def is_valid_email(email):
+    email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    return re.match(email_regex, email)
+
+def is_valid_password(password):
+    """Check if password meets security requirements."""
+    if not password:
+        return False
+
+    # Regex for password validation
+    # Ensure password is between 6 to 20 characters, with at least one lowercase letter, one uppercase letter, and one digit
+    password_pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{6,20}$"
+    
+    return bool(re.match(password_pattern, password))
+
 
 # Global flag to prevent multiple background tasks
 timer_running = False
@@ -204,12 +222,6 @@ def get_timer_state():
 def trigger_timer():
     start_timer()
     return "Timer started."
-
-
-
-
-
-
 
 
 @app.after_request
@@ -337,8 +349,9 @@ def index():
             return "Invalid Input"
         elif points <= 0 or points > 10000:
             return "Points must be between 1 and 10000"
-    
         
+    
+    
          # Check database for user details
         user_id = session["user_id"]
         user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -589,45 +602,57 @@ if __name__ == "__main__":
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-
-    username = request.form.get("username")
-    password = request.form.get("password")
-    confirmation = request.form.get("confirmation")
-
     if request.method == "POST":
-        if not username:
-            return "No username"
-        elif not password:
-            return "No password"
-        elif not confirmation:
-            return "No password confirmation"
-        elif password != confirmation:
-            return "Password confirmation does not match"
         
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirmation = request.form.get("confirmation")
+
+        # Check username conditions
+        if not username:
+            return render_template("register.html", message="Username required")
+        if len(username) < 3 or len(username) > 20:
+            return render_template("register.html", message="Username must be between 3 and 20 characters long")
+
+        # Check email conditions
+        if not email:
+            return render_template("register.html", message="Email Address required")
+        if not is_valid_email(email):
+            return render_template("register.html", message="Invalid email format")
+
+        # Check password conditions
+        if not password:
+            return render_template("register.html", message="Password required")
+        if not confirmation:
+            return render_template("register.html", message="Password confirmation required")
+        if password != confirmation:
+            return render_template("register.html", message="Password confirmation does not match")
+        if not is_valid_password(password):
+            return render_template("register.html", message="Password must be between 6 to 20 characters, with at least one lowercase letter, one uppercase letter, and one digit")
+
         # Check if the username already exists
         user = cur.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if user:
-            return "username already exists"
-        
-        # Insert new user into users
-        cur.execute("INSERT INTO users (username, hash) VALUES (?, ?)",
-                    (username, generate_password_hash(password)))
-        # Commit the changes to the database
+            return render_template("register.html", message="Username already exists")
+
+        # Check if the email already exists
+        user_email = cur.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if user_email:
+            return render_template("register.html", message="Email already exists")
+
+        # Insert new user if all checks pass
+        cur.execute("INSERT INTO users (username, email, hash) VALUES (?, ?, ?)",
+                    (username, email, generate_password_hash(password)))
         con.commit()
 
-        # Fetch the new user's ID after inserting
+        # Fetch new user ID
         user = cur.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
-
-        # Log the user in by saving their id in the session
         session["user_id"] = user[0]
 
-        # Redirect user to home page
         return redirect("/")
-    
-    else:
-        return render_template("register.html")
 
-
+    return render_template("register.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -686,3 +711,74 @@ def leaderboard():
     
     else:
         return render_template("leaderboard.html", user=user)
+    
+    
+@app.route("/history", methods=["GET", "POST"])
+def history():
+    """History"""
+
+    dublbubl_history = cur.execute("SELECT row_id, creator_username, points_in, points_out, date_created FROM dublbubl_history users ORDER BY row_id DESC LIMIT 50").fetchall()
+
+    if request.method == "POST":
+        return redirect("/")
+    
+    else:
+        return render_template("history.html", dublbubl_history=dublbubl_history)
+    
+
+@app.route("/account", methods=["GET", "POST"])
+@login_required
+def change_password():
+    """Change user password"""
+    if request.method == "POST":
+        
+        
+        password = request.form.get("password")
+        new_password = request.form.get("new_password")
+        confirmation = request.form.get("confirmation")
+
+
+        # Check password conditions
+        if not password:
+            return render_template("account.html", message="Password required")
+        if not new_password:
+            return render_template("account.html", message="New password required")
+        if not confirmation:
+            return render_template("account.html", message="New password confirmation required")
+        if new_password != confirmation:
+            return render_template("account.html", message="Password confirmation does not match")
+        if not is_valid_password(new_password):
+            return render_template("account.html", message="New password must be between 6 to 20 characters, with at least one lowercase letter, one uppercase letter, and one digit")
+
+        # Check database for user details
+        user_id = session["user_id"]
+        user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        print(user)
+        print(user_id)
+ 
+
+        # Check if the username already exists
+        if not user:
+            return render_template("account.html", message="User not found")
+
+        # Get the stored hashed password
+        stored_password_hash = user[2]
+
+        # Check if the entered password matches the stored hash
+        if not check_password_hash(stored_password_hash, password):
+            return render_template("account.html", message="Invalid current password")
+        
+        # Check if the current password is the same as the new password
+        if password == new_password:
+            return render_template("account.html", message="New password cannot be the same as the current password")
+
+        # If password is correct, proceed to change it
+        hashed_new_password = generate_password_hash(new_password)
+        
+        # Update the password in the database
+        cur.execute("UPDATE users SET hash = ? WHERE id = ?", (hashed_new_password, user_id))
+        con.commit()
+
+        return render_template("account.html", message="Password changed successfully")
+
+    return render_template("account.html")

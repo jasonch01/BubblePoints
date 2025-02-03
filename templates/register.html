@@ -2,9 +2,15 @@
 
 {% block main %}
 
+<!-- Show messages dynamically -->
+{% if message %}
+    <div class="alert alert-danger text-center">{{ message }}</div>
+{% endif %}
+
 <div class="d-flex flex-column align-items-center min-vh-100">
   <form action="/register" method="post" class="login-form w-100" style="max-width: 400px;">
     <input autocomplete="off" autofocus class="form-control" name="username" placeholder="Username" type="text">
+    <input autocomplete="off" autofocus class="form-control" name="email" placeholder="Email Address" type="email">
     <input class="form-control" name="password" placeholder="Create a password" type="password">
     <input class="form-control" name="confirmation" placeholder="Confirm password" type="password">
     <button class="btn btn-primary w-100" type="submit">Register</button>

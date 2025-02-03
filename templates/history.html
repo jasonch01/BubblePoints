@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+
+<table class="table table-success table-sm text-center history">
+  <thead class="table-primary">
+    <tr class="table-primary">
+      <th class="table-primary" colspan="5"><div class="table-header"><span class="blue">dub</span><span class="red">l</span><span class="yellow">bub</span><span class="green">l</span></div></th>
+    </tr>
+  </thead>          
+  <thead>
+    <tr class="table-secondary">
+      <th>Bubble #</th>
+      <th>Username</th>
+      <th>Points invested</th>
+      <th>Points return</th>
+      <th>Created on</th>
+    </tr>
+  </thead>
+  <tbody id="dublbubl">
+    {% for row in dublbubl_history %}
+    <tr class="
+    {% if row[2] == 10000 %}
+      table-dark
+    {% elif row[2] > 5000 %}
+      table-danger
+    {% elif row[2] > 1000 %}
+      table-warning
+    {% else %}
+      table-success
+    {% endif %}
+    ">
+      <td>{{ row[0] }}</td>
+      <td>{{ row[1] }}</td>
+      <td>{{ row[2] }}</td>
+      <td>{{ row[3] }}</td>
+      <td>{{ row[4] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+
+
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<!-- Show messages dynamically -->
+{% if message %}
+    <div class="alert {% if 'Invalid' in message %}alert-danger{% elif 'success' in message %}alert-success{% else %}alert-warning{% endif %} text-center">
+        {{ message }}
+    </div>
+{% endif %}
+
+<div class="d-flex flex-column align-items-center min-vh-100">
+  <form action="/account" method="post" class="login-form w-100" style="max-width: 400px;">
+    <input class="form-control" name="password" placeholder="Password" type="password">
+    <input class="form-control" name="new_password" placeholder="Create a new password" type="password">
+    <input class="form-control" name="confirmation" placeholder="Confirm new password" type="password">
+    <button class="btn btn-primary w-100" type="submit">Change Password</button>
+  </form>
+</div>
+
+{% endblock %}
