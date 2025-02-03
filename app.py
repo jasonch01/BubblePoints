@@ -330,25 +330,32 @@ def index():
 
     points = request.form.get("points")
     current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message = None
     
     if request.method == "POST":
         # Check if the user is logged in before allowing them to submit points
         if user_id is None:
-            return "You must be logged in to submit points."
+            return render_template("login.html", message="You must be logged in to create a bubble")
         
         # Check points are entered
         if not points:
-            return "No points entered"
+            return render_template("index.html", message="No points entered", 
+                           current_points_in=current_points_in, points_in_required=points_in_required, user=user,
+                           user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
         try:
             points = int(points)
         except ValueError:
-            return "Invalid Input"
+            return render_template("index.html", message="Invalid Input", 
+                           current_points_in=current_points_in, points_in_required=points_in_required, user=user,
+                           user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
 
         # Check points are positive number
         if points is None:
             return "Invalid Input"
         elif points <= 0 or points > 10000:
-            return "Points must be between 1 and 10000"
+            return render_template("index.html", message="Points must be between 1 and 10000", 
+                           current_points_in=current_points_in, points_in_required=points_in_required, user=user,
+                           user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
         
     
     
@@ -362,7 +369,9 @@ def index():
         
         # Ensure user has enough points     
         if current_points < points:
-            return "not enough points"
+            return render_template("index.html", message="Not enough points", 
+                           current_points_in=current_points_in, points_in_required=points_in_required, user=user,
+                           user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
 
         try:
             # Calculate the multiplier based on points_in
@@ -590,7 +599,7 @@ def index():
         return redirect("/")
         
     else:
-        return render_template('index.html', dublbubl=dublbubl, user=user, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
+        return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
 
 
 if __name__ == "__main__":
@@ -670,14 +679,14 @@ def login():
 
         # Check if username was entered
         if not username or not password:
-            return "Username and password are required"
+            return render_template("login.html", message="Username and password are required")
 
         # Check database for user details (username, hash, and id)
         user = cur.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
 
         # Check if username exists and password is correct
         if user is None or not check_password_hash(user[2], password):
-            return "Invalid username and/or password"
+            return render_template("login.html", message="Invalid username and/or password")
 
         # Log the user in by saving their id in the session
         session["user_id"] = user[0]
@@ -732,11 +741,9 @@ def change_password():
     """Change user password"""
     if request.method == "POST":
         
-        
         password = request.form.get("password")
         new_password = request.form.get("new_password")
         confirmation = request.form.get("confirmation")
-
 
         # Check password conditions
         if not password:

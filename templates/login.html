@@ -2,6 +2,11 @@
 
 {% block main %}
 
+<!-- Show messages dynamically -->
+{% if message %}
+    <div class="alert alert-danger text-center">{{ message }}</div>
+{% endif %}
+
 <div class="d-flex flex-column align-items-center min-vh-100">
   <form action="/login" method="post" class="login-form w-100" style="max-width: 400px;">
         <input autocomplete="off" autofocus class="form-control" name="username" placeholder="Username" type="text">

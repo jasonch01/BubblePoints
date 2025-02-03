@@ -69,6 +69,15 @@
   <button class="btn btn-primary" type="submit">Create Bubble</button>
 </form>
 
+&nbsp;
+
+<!-- Show messages dynamically -->
+{% if message %}
+    <div class="alert {% if 'Invalid' in message %}alert-danger{% elif 'success' in message %}alert-success{% else %}alert-warning{% endif %} text-center">
+        {{ message }}
+    </div>
+{% endif %}
+
 
 {% endif %}
 
