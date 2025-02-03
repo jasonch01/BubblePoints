@@ -92,7 +92,12 @@ def init_db():
 init_db()
 
 def is_valid_email(email):
+    """Check if email is valid and case-insensitive."""
+    # Convert email to lowercase for case-insensitive comparison
+    email = email.lower()
+    
     email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    
     return re.match(email_regex, email)
 
 def is_valid_password(password):
@@ -108,6 +113,9 @@ def is_valid_password(password):
 
 def is_valid_username(username):
     """Check if the username meets the requirements."""
+    # Convert username to lowercase for case-insensitive comparison
+    username = username.lower()
+    
     # Check if username length is between 3 and 20 characters
     if len(username) < 3 or len(username) > 20:
         return False, "Username must be between 3 and 20 characters long"
@@ -658,12 +666,12 @@ def register():
             return render_template("register.html", message="Password must be between 6 to 20 characters, with at least one lowercase letter, one uppercase letter, and one digit")
 
         # Check if the username already exists
-        user = cur.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        user = cur.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,)).fetchone()
         if user:
             return render_template("register.html", message="Username already exists")
 
         # Check if the email already exists
-        user_email = cur.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        user_email = cur.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", (email,)).fetchone()
         if user_email:
             return render_template("register.html", message="Email already exists")
 
