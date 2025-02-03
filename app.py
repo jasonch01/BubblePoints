@@ -106,6 +106,18 @@ def is_valid_password(password):
     
     return bool(re.match(password_pattern, password))
 
+def is_valid_username(username):
+    """Check if the username meets the requirements."""
+    # Check if username length is between 3 and 20 characters
+    if len(username) < 3 or len(username) > 20:
+        return False, "Username must be between 3 and 20 characters long"
+    
+    # Check if username contains only letters and numbers
+    if not re.match("^[a-zA-Z0-9]+$", username):
+        return False, "Username can only contain letters and numbers"
+    
+    return True, ""
+
 
 # Global flag to prevent multiple background tasks
 timer_running = False
@@ -621,8 +633,10 @@ def register():
         # Check username conditions
         if not username:
             return render_template("register.html", message="Username required")
-        if len(username) < 3 or len(username) > 20:
-            return render_template("register.html", message="Username must be between 3 and 20 characters long")
+        # Check username validity
+        is_valid, username_message = is_valid_username(username)
+        if not is_valid:
+            return render_template("register.html", message=username_message)
 
         # Check email conditions
         if not email:
