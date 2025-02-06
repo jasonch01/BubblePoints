@@ -165,22 +165,6 @@
   </tbody>
 </table>
 
-<!-- Pagination controls -->
-<div class="pagination d-flex justify-content-center align-items-center">
-  {% if page > 1 %}
-    <a href="{{ url_for('index', page=page-1) }}" class="btn btn-primaryr">Previous</a>
-  {% endif %}
-
-  {% for p in range(1, total_pages + 1) %}
-    <a href="{{ url_for('index', page=p) }}" class="btn btn-secondary {% if p == page %}active{% endif %}">
-      {{ p }}
-    </a>
-  {% endfor %}
-
-  {% if page < total_pages %}
-    <a href="{{ url_for('index', page=page+1) }}" class="btn btn-primary">Next</a>
-  {% endif %}
-</div>
 
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script>
@@ -189,8 +173,6 @@ var user_id = "{{ session['user_id'] }}"; // Dynamically set the user ID from th
 // Connect to the server via Socket.IO, passing the user ID
 var socket = io();
 
-  /// Keep track of the current page (ensure this matches the backend logic)
-  let currentPage = 1;
 
   // Function to determine the row class based on points_in value
   function determineRowClass(pointsIn) {
@@ -235,30 +217,27 @@ var socket = io();
 
 
 
-  // Listen for "update_table" events from the server
-  socket.on("update_table", (data) => {
-    console.log("Received update:", data);
+// Listen for "update_table" events from the server
+socket.on("update_table", (data) => {
+  console.log("Received update:", data);
 
-    // Ensure the update matches the current page
-    if (data.page === currentPage) {
-      const tableBody = document.getElementById("dublbubl");
-      tableBody.innerHTML = ""; // Clear the table body
+  const tableBody = document.getElementById("dublbubl");
+  tableBody.innerHTML = ""; // Clear the table body
 
-      // Add the updated rows to the table
-      data.rows.forEach((row) => {
-        const tr = document.createElement("tr");
-        tr.className = determineRowClass(row[3]); // Apply class based on points_in
-        tr.innerHTML = `
-          <td>${row[0]}</td>
-          <td>${row[2]}</td>
-          <td>${row[3]}</td>
-          <td>${row[4]}</td>
-          <td>${row[5]}</td>
-        `;
-        tableBody.appendChild(tr);
-      });
-    }
+  // Add the updated rows to the table
+  data.rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.className = determineRowClass(row[3]); // Apply class based on points_in
+    tr.innerHTML = `
+      <td>${row[0]}</td>
+      <td>${row[2]}</td>
+      <td>${row[3]}</td>
+      <td>${row[4]}</td>
+      <td>${row[5]}</td>
+    `;
+    tableBody.appendChild(tr);
   });
+});
 
 // Listen for user history updates
 socket.on("update_user_history", function (data) {

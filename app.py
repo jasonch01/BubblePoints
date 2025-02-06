@@ -169,7 +169,7 @@ def countdown_timer():
                 thread_con.commit()
 
                 # Emit an empty table to the front-end
-                socketio.emit("update_table", {"rows": [], "page": 1})  # Notify frontend of table reset
+                socketio.emit("update_table", {"rows": []})  # Notify frontend of table reset
 
                 # Emit the reset points to the frontend
                 socketio.emit("update_points", {"current_points_in": 0})  # Notify frontend of points reset
@@ -274,36 +274,16 @@ def on_connect():
 @app.route("/", methods=["GET", "POST"])
 def index():
 
-    # Start the timer when the user accesses the home page
+    updated_rows = []  # Initialize with an empty list
+
+    # Start the timer when the user accesses the index
     start_timer()
 
     try:
         # Check database for dublbubl table
         dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
 
-        # Define the number of rows per page
-        rows_per_page = 20
 
-        # Get the current page number from the query string (default is page 1)
-        page = request.args.get("page", 1, type=int)
-
-        # Calculate the offset based on the current page
-        offset = (page - 1) * rows_per_page
-
-        # Fetch the rows for the current page
-        dublbubl = cur.execute("""
-            SELECT * FROM dublbubl
-            ORDER BY row_id ASC
-            LIMIT ? OFFSET ?
-        """, (rows_per_page, offset)).fetchall()
-
-        # Get the total number of rows in the dublbubl table for pagination
-        total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
-
-        # Calculate the total number of pages
-        total_pages = (total_rows + rows_per_page - 1) // rows_per_page
-
-        
 
         # Fetch current points_in from points_tracker
         current_points_in = cur.execute("SELECT current_points_in FROM points_tracker").fetchone()
@@ -409,15 +389,14 @@ def index():
             # Commit the changes to the dublbubl database
             con.commit()
 
-            # Fetch the updated rows after the insertion
+            # Fetch all updated rows to send to the front-end
             updated_rows = cur.execute("""
                 SELECT * FROM dublbubl
                 ORDER BY row_id ASC
-                LIMIT ? OFFSET ?
-            """, (rows_per_page, offset)).fetchall()
+            """).fetchall()
 
             # Emit the updated rows to all connected clients
-            socketio.emit("update_table", {"rows": updated_rows, "page": page})
+            socketio.emit("update_table", {"rows": updated_rows})
 
             # Deduct from total points and update it in the database
             total_points = current_points - points
@@ -590,15 +569,14 @@ def index():
                 con.commit()
 
 
-                # Fetch the updated rows to send to the front-end
+                # Fetch all updated rows to send to the front-end
                 updated_rows = cur.execute("""
                     SELECT * FROM dublbubl
                     ORDER BY row_id ASC
-                    LIMIT ? OFFSET ?
-                """, (rows_per_page, offset)).fetchall()
+                """).fetchall()
 
                 # Emit the updated rows to all connected clients
-                socketio.emit("update_table", {"rows": updated_rows, "page": page})
+                socketio.emit("update_table", {"rows": updated_rows})
 
                 # Ensure the update is triggered only after database changes
                 print(f"Emitting updated rows to room: {user[0]}")
@@ -616,7 +594,7 @@ def index():
         return redirect(url_for("index"))
         
     else:
-        return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, page=page, total_rows=total_rows, total_pages=total_pages)
+        return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, updated_rows=updated_rows)
 
 
 if __name__ == "__main__":
@@ -709,7 +687,7 @@ def login():
 
         # Log the user in by saving their id in the session
         session["user_id"] = user[0]
-        # Redirect user to home page
+        # Redirect user to index
         return redirect("/")
 
     else:
@@ -722,7 +700,7 @@ def logout():
     # Forget any user_id
     session.clear()
 
-    # Redirect user to home page
+    # Redirect user to index
     return redirect("/")
 
 
