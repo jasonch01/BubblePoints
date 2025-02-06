@@ -701,7 +701,7 @@ def login():
             return render_template("login.html", message="Username and password are required")
 
         # Check database for user details (username, hash, and id)
-        user = cur.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        user = cur.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,)).fetchone()
 
         # Check if username exists and password is correct
         if user is None or not check_password_hash(user[2], password):
