@@ -32,11 +32,11 @@
   </div>
 </div>
   <!-- Middle Column Below the Two-Column Section -->
-  <div class="row middle-row mt-2 justify-content-center">
+  <div class="row middle-row mt-1 justify-content-center">
     <div class="col-md-8 col-lg-6">
       <div class="middle-container text-center p-4">
         <!-- Points Investment and Return Table -->
-        <table class="table table-sm table-bordered mt-2 mx-auto small-table">
+        <table class="table table-sm table-bordered mt-1 mx-auto small-table">
           <thead class="table-primary">
             <tr>
               <th colspan="2">Points Investment & Return</th>
@@ -105,38 +105,6 @@
           {% endfor %}
         </tbody>
       </table>
-      <!-- Points Investment and Return Table -->
-      <table class="table table-responsive table-sm mt-3">
-        <thead class="table-primary">
-          <tr class="table-primary">
-            <th class="table-primary" colspan="2">Points Investment & Return</th>
-          </tr>
-        </thead>
-        <thead class="table-light">
-          <tr class="table-secondary">
-            <th class="table-secondary">Points Range</th>
-            <th class="table-secondary">Return Multiplier</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="table-success"> <!-- 1-999: Green -->
-            <td class="table-success">1 - 999</td>
-            <td class="table-success">1.25x</td>
-          </tr>
-          <tr class="table-warning"> <!-- 1000-4999: Yellow -->
-            <td class="table-warning">1000 - 4999</td>
-            <td class="table-warning">1.5x</td>
-          </tr>
-          <tr class="table-danger"> <!-- 5000-9999: Red -->
-            <td class="table-danger">5000 - 9999</td>
-            <td class="table-danger">1.75x</td>
-          </tr>
-          <tr class="table-dark"> <!-- 10000+: Dark -->
-            <td class="table-dark">10000+</td>
-            <td class="table-dark">2x</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
 
     <!-- Account History Table -->
@@ -171,6 +139,46 @@
     </div>
   </div>
 </div>
+
+<!-- Middle Column Below the Two-Column Section -->
+<div class="row middle-row mt-1 justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="middle-container text-center p-4">
+      <!-- Points Investment and Return Table -->
+      <table class="table table-sm table-bordered mt-1 mx-auto small-table">
+        <thead class="table-primary">
+          <tr>
+            <th colspan="2">Points Investment & Return</th>
+          </tr>
+        </thead>
+        <thead class="table-light">
+          <tr class="table-secondary">
+            <th>Points Range</th>
+            <th>Return Multiplier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="table-success">
+            <td>1 - 999</td>
+            <td>1.25x</td>
+          </tr>
+          <tr class="table-warning">
+            <td>1000 - 4999</td>
+            <td>1.5x</td>
+          </tr>
+          <tr class="table-danger">
+            <td>5000 - 9999</td>
+            <td>1.75x</td>
+          </tr>
+          <tr class="table-dark">
+            <td>10000+</td>
+            <td>2x</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>  
 
 <form action="/" method="post" class="d-flex justify-content-center align-items-center">
   <input class="form-control me-2 w-auto" name="points" placeholder="Enter points" type="number">
