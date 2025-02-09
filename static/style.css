@@ -366,3 +366,45 @@ button.btn-primary:hover {
     font-weight: bold;
     text-align: center;
 }
+
+
+
+
+
+#pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+#pagination a {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    border-radius: 50%;
+    font-size: 14px;
+    color: #007bff;
+    text-decoration: none;
+    border: 2px solid #007bff;
+    margin: 0 5px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#pagination a:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+#pagination a[style*="font-weight: bold"] {
+    background-color: #007bff;
+    color: white;
+}
+
+#pagination a:disabled {
+    color: #aaa;
+    border-color: #aaa;
+    cursor: not-allowed;
+}

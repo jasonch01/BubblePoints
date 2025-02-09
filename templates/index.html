@@ -216,7 +216,6 @@
 
 
 
-
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script>
 var user_id = "{{ session['user_id'] }}"; // Dynamically set the user ID from the session or context
@@ -272,7 +271,7 @@ var socket = io();
 // Listen for "update_table" events from the server
 socket.on("update_table", (data) => {
   console.log("Received update:", data);
-  
+
   const tableBody = document.getElementById("dublbubl");
   tableBody.innerHTML = ""; // Clear the table body
 
@@ -295,21 +294,19 @@ socket.on("update_table", (data) => {
   if (paginationDiv) {
     paginationDiv.innerHTML = ""; // Clear previous pagination
 
+    // Create page number links
     for (let i = 1; i <= data.total_pages; i++) {
-      const button = document.createElement("button");
-      button.textContent = i;
-      button.className = "page-btn"; // Add a class for styling
-      button.onclick = function () {
-        window.location.href = `/?page=${i}`;
-      };
+      const pageLink = document.createElement("a");
+      pageLink.href = `/?page=${i}`;
+      pageLink.textContent = i;
+      pageLink.className = "page-btn";
 
       // Highlight the current page
       if (i === data.current_page) {
-        button.style.fontWeight = "bold";
-        button.disabled = true; // Disable current page button
+        pageLink.style.fontWeight = "bold"; // Highlight the current page
       }
 
-      paginationDiv.appendChild(button);
+      paginationDiv.appendChild(pageLink);
     }
   }
 });
