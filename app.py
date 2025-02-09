@@ -5,7 +5,9 @@ import threading
 import time
 import re
 
-from secret_key import secret_key as default_key
+# secret_key.py
+# from secret_key import secret_key as default_key
+
 from dotenv import load_dotenv
 
 from flask import Flask, request, redirect, render_template, request, session, flash, url_for
