@@ -225,7 +225,7 @@
 var user_id = "{{ session['user_id'] }}"; // Dynamically set the user ID from the session or context
 
 // Connect to the server via Socket.IO, passing the user ID
-var socket = io();
+var socket = io.connect('https://bubblepoints.com');
 
 
   // Function to determine the row class based on points_in value

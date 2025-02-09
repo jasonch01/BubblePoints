@@ -26,7 +26,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Initialize Flask-SocketIO
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins=["https://bubblepoints.com"])
 
 
 # Set the secret key
