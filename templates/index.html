@@ -74,15 +74,15 @@
         </thead>
         <tbody>
           <tr class="table-success"> <!-- 1-999: Green -->
-            <td class="table-success">1 - 1000</td>
+            <td class="table-success">1 - 999</td>
             <td class="table-success">1.25x</td>
           </tr>
           <tr class="table-warning"> <!-- 1000-4999: Yellow -->
-            <td class="table-warning">1001 - 5000</td>
+            <td class="table-warning">1000 - 4999</td>
             <td class="table-warning">1.5x</td>
           </tr>
           <tr class="table-danger"> <!-- 5000-9999: Red -->
-            <td class="table-danger">5001 - 9999</td>
+            <td class="table-danger">5000 - 9999</td>
             <td class="table-danger">1.75x</td>
           </tr>
           <tr class="table-dark"> <!-- 10000+: Dark -->
@@ -123,7 +123,6 @@
         </tbody>
       </table>
     </div>
-    
   </div>
 </div>
 
@@ -177,11 +176,11 @@
   <tbody id="dublbubl">
     {% for row in dublbubl %}
     <tr class="
-    {% if row[3] == 10000 %}
+    {% if row[3] >= 10000 %}
       table-dark
-    {% elif row[3] > 5000 %}
+    {% elif row[3] >= 5000 %}
       table-danger
-    {% elif row[3] > 1000 %}
+    {% elif row[3] >= 1000 %}
       table-warning
     {% else %}
       table-success
