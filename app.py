@@ -672,9 +672,12 @@ def index():
 
 
 if __name__ == "__main__":
-    start_timer()  # Start the countdown thread
-    socketio.run(app, debug=True)
-
+    try:
+        start_timer()  # Start the countdown thread
+        socketio.run(app, debug=True)
+    except KeyboardInterrupt:
+        print("Shutting down the server gracefully...")
+        # Perform any cleanup here if needed
 
 
 @app.route("/register", methods=["GET", "POST"])
