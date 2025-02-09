@@ -27,8 +27,7 @@ socketio = SocketIO(app)
 
 
 # Set the secret key
-default_key = "secret_key123"
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", default_key)
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
 
 # Configure session to use filesystem (instead of signed cookies)
