@@ -44,7 +44,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         username TEXT NOT NULL,
         hash TEXT NOT NULL,
-        points INTEGER NOT NULL DEFAULT 1000,
+        points INTEGER NOT NULL DEFAULT 10000,
         total_points_earned INTEGER NOT NULL DEFAULT 0,
         email TEXT UNIQUE
     )

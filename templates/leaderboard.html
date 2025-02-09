@@ -1,5 +1,9 @@
 {% extends "layout.html" %}
 
+{% block title %}
+    Leaderboard
+{% endblock %}
+
 {% block main %}
 
 
@@ -17,11 +21,13 @@
     </thead>
     <tbody>
       {% for user in user %}
-      <tr class="leaderboard-row">
-        <td class="text-center">{{ loop.index }}</td>
-        <td class="text-center">{{ user[0] }}</td>
-        <td class="text-center">{{ user[1] }}</td>
-      </tr>
+        {% if user[1] != 0 %}  <!-- Exclude user if points earned are 0 -->
+          <tr class="leaderboard-row">
+            <td class="text-center">{{ loop.index }}</td>
+            <td class="text-center">{{ user[0] }}</td>
+            <td class="text-center">{{ user[1] }}</td>
+          </tr>
+        {% endif %}
       {% endfor %}
     </tbody>
   </table>
