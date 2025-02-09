@@ -26,8 +26,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Initialize Flask-SocketIO
-socketio = SocketIO(app, cors_allowed_origins=["https://bubblepoints.com"])
-
+socketio = SocketIO(app, cors_allowed_origins="*")  # Allow all origins for local development
 
 # Set the secret key
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
@@ -244,6 +243,9 @@ def get_timer_state():
 
     # Emit the initial timer state to the front-end
     socketio.emit('initial_timer_state', {'time': formatted_time})
+
+
+
 
 
 # Example Flask route to start the timer

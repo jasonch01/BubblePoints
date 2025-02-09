@@ -225,8 +225,14 @@
 var user_id = "{{ session['user_id'] }}"; // Dynamically set the user ID from the session or context
 
 // Connect to the server via Socket.IO, passing the user ID
-var socket = io.connect('https://bubblepoints.com');
-
+var socket;
+if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    // Local Development
+    socket = io.connect('http://localhost:5000'); // Change port if necessary
+} else {
+    // Production
+    socket = io.connect('https://bubblepoints.com');
+}
 
   // Function to determine the row class based on points_in value
   function determineRowClass(pointsIn) {
@@ -243,6 +249,20 @@ var socket = io.connect('https://bubblepoints.com');
 
 
   const timerElement = document.getElementById("countdown_timer");
+
+
+  // Emit the 'get_initial_timer_state' event when the page loads
+  window.onload = function() {
+      socket.emit('get_initial_timer_state');
+  };
+
+  // Listen for the 'initial_timer_state' event to receive the initial time
+  socket.on('initial_timer_state', function(data) {
+      const time = data.time;  // Get the initial time from the server
+      // Set the correct initial value on the timer display
+      document.getElementById('countdown_timer').innerText = time;
+  });
+
 
 
   // Listen for the timer update event
