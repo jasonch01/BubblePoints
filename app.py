@@ -27,6 +27,7 @@ socketio = SocketIO(app)
 
 
 # Set the secret key
+default_key = "secret_key123"
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", default_key)
 
 
