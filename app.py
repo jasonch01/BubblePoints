@@ -283,6 +283,21 @@ def index():
         # Check database for dublbubl table
         dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
 
+        # Get current page number from query parameters, default to 1
+        page = request.args.get("page", 1, type=int)
+        rows_per_page = 5  # Limit rows per page
+        offset = (page - 1) * rows_per_page  # Calculate offset
+
+         # Fetch limited rows based on pagination
+        dublbubl = cur.execute(
+            "SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT ? OFFSET ?", 
+            (rows_per_page, offset)
+        ).fetchall()
+
+        # Get total row count to calculate total pages
+        total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+        total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Round up
+
 
 
         # Fetch current points_in from points_tracker
@@ -395,8 +410,31 @@ def index():
                 ORDER BY row_id ASC
             """).fetchall()
 
-            # Emit the updated rows to all connected clients
-            socketio.emit("update_table", {"rows": updated_rows})
+            # Get total row count to calculate total pages
+            total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+            
+            # Calculate the total number of pages
+            total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Round up
+
+            # Calculate the OFFSET based on the current page
+            offset = (page - 1) * rows_per_page
+
+            # Debugging output
+            print(f"Page: {page}, Rows per page: {rows_per_page}, Offset: {offset}")
+            print(f"Fetching rows starting from: {offset}, Limit: {rows_per_page}")
+
+            # Fetch rows for the current page using LIMIT and OFFSET
+            updated_rows = cur.execute(
+                "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT ? OFFSET ?",
+                (rows_per_page, offset)
+            ).fetchall()
+
+            # Emit the updated rows along with pagination details
+            socketio.emit("update_table", {
+                "rows": updated_rows,
+                "total_pages": total_pages,
+                "current_page": page
+            })
 
             # Deduct from total points and update it in the database
             total_points = current_points - points
@@ -568,15 +606,40 @@ def index():
                 cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (remaining_points_in, current_date))
                 con.commit()
 
-
                 # Fetch all updated rows to send to the front-end
                 updated_rows = cur.execute("""
                     SELECT * FROM dublbubl
                     ORDER BY row_id ASC
                 """).fetchall()
 
-                # Emit the updated rows to all connected clients
-                socketio.emit("update_table", {"rows": updated_rows})
+
+                # Get total row count to calculate total pages
+                total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+
+                # Calculate the total number of pages
+                total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Round up
+
+
+                # Calculate the OFFSET based on the current page
+                offset = (page - 1) * rows_per_page
+
+                # Debugging output
+                print(f"Page: {page}, Rows per page: {rows_per_page}, Offset: {offset}")
+                print(f"Fetching rows starting from: {offset}, Limit: {rows_per_page}")
+
+
+                # Fetch rows for the current page using LIMIT and OFFSET
+                updated_rows = cur.execute(
+                    "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT ? OFFSET ?",
+                    (rows_per_page, offset)
+                ).fetchall()
+
+                # Emit the updated rows along with pagination details
+                socketio.emit("update_table", {
+                    "rows": updated_rows,
+                    "total_pages": total_pages,
+                    "current_page": page
+                })
 
                 # Ensure the update is triggered only after database changes
                 print(f"Emitting updated rows to room: {user[0]}")
@@ -594,7 +657,7 @@ def index():
         return redirect(url_for("index"))
         
     else:
-        return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, updated_rows=updated_rows)
+        return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, updated_rows=updated_rows, total_pages=total_pages, current_page=page)
 
 
 if __name__ == "__main__":

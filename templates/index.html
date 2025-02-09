@@ -197,6 +197,26 @@
 </table>
 
 
+
+
+<!-- Pagination Buttons -->
+<div class="text-center" id="pagination">
+  {% for i in range(1, total_pages + 1) %}
+      <a href="{{ url_for('index', page=i) }}" 
+         style="padding: 5px; {% if i == current_page %}font-weight: bold;{% endif %}">
+          {{ i }}
+      </a>
+  {% endfor %}
+</div>
+
+
+
+
+
+
+
+
+
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script>
 var user_id = "{{ session['user_id'] }}"; // Dynamically set the user ID from the session or context
@@ -252,7 +272,7 @@ var socket = io();
 // Listen for "update_table" events from the server
 socket.on("update_table", (data) => {
   console.log("Received update:", data);
-
+  
   const tableBody = document.getElementById("dublbubl");
   tableBody.innerHTML = ""; // Clear the table body
 
@@ -269,6 +289,29 @@ socket.on("update_table", (data) => {
     `;
     tableBody.appendChild(tr);
   });
+
+  // Update pagination buttons
+  const paginationDiv = document.getElementById("pagination");
+  if (paginationDiv) {
+    paginationDiv.innerHTML = ""; // Clear previous pagination
+
+    for (let i = 1; i <= data.total_pages; i++) {
+      const button = document.createElement("button");
+      button.textContent = i;
+      button.className = "page-btn"; // Add a class for styling
+      button.onclick = function () {
+        window.location.href = `/?page=${i}`;
+      };
+
+      // Highlight the current page
+      if (i === data.current_page) {
+        button.style.fontWeight = "bold";
+        button.disabled = true; // Disable current page button
+      }
+
+      paginationDiv.appendChild(button);
+    }
+  }
 });
 
 // Listen for user history updates
