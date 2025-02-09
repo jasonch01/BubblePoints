@@ -386,25 +386,25 @@ button.btn-primary:hover {
     text-align: center;
     border-radius: 50%;
     font-size: 14px;
-    color: #007bff;
+    color: #4a90e2; /* Soft blue */
     text-decoration: none;
-    border: 2px solid #007bff;
+    border: 2px solid #4a90e2; /* Soft blue */
     margin: 0 5px;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #pagination a:hover {
-    background-color: #007bff;
+    background-color: #4a90e2; /* Soft blue */
     color: white;
 }
 
 #pagination a[style*="font-weight: bold"] {
-    background-color: #007bff;
+    background-color: #4a90e2; /* Soft blue */
     color: white;
 }
 
 #pagination a:disabled {
-    color: #aaa;
-    border-color: #aaa;
+    color: #d1d1d1; /* Light gray */
+    border-color: #d1d1d1; /* Light gray */
     cursor: not-allowed;
 }
