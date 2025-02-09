@@ -250,11 +250,10 @@ if (window.location.hostname === "localhost" || window.location.hostname === "12
 
   const timerElement = document.getElementById("countdown_timer");
 
-
-  // Emit the 'get_initial_timer_state' event when the page loads
-  window.onload = function() {
-      socket.emit('get_initial_timer_state');
-  };
+  // Preload the timer with a default value (e.g., 30 seconds)
+  if (timerElement) {
+      timerElement.innerText = "Loading...";  // You can also use "00:30"
+  }
 
   // Listen for the 'initial_timer_state' event to receive the initial time
   socket.on('initial_timer_state', function(data) {
@@ -262,7 +261,6 @@ if (window.location.hostname === "localhost" || window.location.hostname === "12
       // Set the correct initial value on the timer display
       document.getElementById('countdown_timer').innerText = time;
   });
-
 
 
   // Listen for the timer update event
@@ -279,16 +277,6 @@ if (window.location.hostname === "localhost" || window.location.hostname === "12
           timerElement.textContent = time;
       }
   });
-
-
-  // Optionally handle the timer state response from the server
-  socket.on('initial_timer_state', function(data) {
-      const time = data.time;  // Get the initial time from the server
-      // Set the correct initial value
-      document.getElementById('countdown_timer').innerText = time;
-  });
-
-
 
 
 
