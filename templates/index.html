@@ -207,11 +207,11 @@ var socket = io();
 
   // Function to determine the row class based on points_in value
   function determineRowClass(pointsIn) {
-    if (pointsIn == 10000) {
+    if (pointsIn >= 10000) {
       return "table-dark";
-    } else if (pointsIn > 5000) {
+    } else if (pointsIn >= 5000) {
       return "table-danger";
-    } else if (pointsIn > 1000) {
+    } else if (pointsIn >= 1000) {
       return "table-warning";
     } else {
       return "table-success";
