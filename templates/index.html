@@ -379,7 +379,7 @@ socket.on("update_user_history", function (data) {
     document.querySelector('#points_in_required').innerText = `Points Needed to Pop Next Bubble: ${data.points_in_required}`;
   });
 
-
+  // Display Alert
   setTimeout(function() {
     let alerts = document.querySelectorAll(".alert");
     alerts.forEach(alert => {

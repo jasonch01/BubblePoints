@@ -149,12 +149,14 @@ def countdown_timer():
         while last_timestamp:
             current_time = datetime.datetime.now()
 
-            # Calculate the remaining time until 30 seconds is reached
-            remaining_time = 30 - int((current_time - last_timestamp).total_seconds())
+            # Calculate the remaining time until 24 hours is reached
+            remaining_time = 86400 - int((current_time - last_timestamp).total_seconds()) # 86400 seconds = 24 hours
 
             # If the remaining time is greater than 0, update the timer and sleep for 1 second
             if remaining_time > 0:
-                formatted_time = f"00:00:{remaining_time:02d}"
+                hours, remainder = divmod(remaining_time, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                formatted_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
                 socketio.emit("update_timer", {"time": formatted_time})  # Emit the remaining time to frontend
                 time.sleep(1)  # Sleep for 1 second before checking again
             else:
@@ -228,8 +230,10 @@ def get_timer_state():
     if last_row:
         last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
         current_time = datetime.datetime.now()
-        remaining_time = 30 - int((current_time - last_timestamp).total_seconds())
-        formatted_time = f"00:00:{remaining_time:02d}" if remaining_time > 0 else "00:00:00"
+        remaining_time = 86400 - int((current_time - last_timestamp).total_seconds()) # 86400 seconds = 24 hours
+        hours, remainder = divmod(remaining_time, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        formatted_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}" if remaining_time > 0 else "00:00:00"
     else:
         formatted_time = "00:00:00"  # Default if no rows exist
 
@@ -285,7 +289,7 @@ def index():
 
         # Get current page number from query parameters, default to 1
         page = request.args.get("page", 1, type=int)
-        rows_per_page = 5  # Limit rows per page
+        rows_per_page = 20  # Limit rows per page
         offset = (page - 1) * rows_per_page  # Calculate offset
 
          # Fetch limited rows based on pagination
