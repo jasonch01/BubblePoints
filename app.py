@@ -296,6 +296,10 @@ def index():
 
         # Get current page number from query parameters, default to 1
         page = request.args.get("page", 1, type=int)
+        print(f"📢 Page received in request: {page}")  # Debugging output
+        print(f"Request URL: {request.url}")
+        print(f"Request Args: {request.args}")
+
         rows_per_page = 20  # Limit rows per page
         offset = (page - 1) * rows_per_page  # Calculate offset
 
@@ -423,6 +427,11 @@ def index():
 
             # Get total row count to calculate total pages
             total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+
+            page = request.form.get("page", 1, type=int)
+            print(f"📢 Page received in post request: {page}")  # Debugging output
+            print(f"Request URL: {request.url}")
+            print(f"Request Args: {request.args}")
             
             # Calculate the total number of pages
             total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Round up
@@ -627,9 +636,13 @@ def index():
                 # Get total row count to calculate total pages
                 total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
 
+                page = request.form.get("page", 1, type=int)
+                print(f"📢 Page received in post request: {page}")  # Debugging output
+                print(f"Request URL: {request.url}")
+                print(f"Request Args: {request.args}")
+
                 # Calculate the total number of pages
                 total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Round up
-
 
                 # Calculate the OFFSET based on the current page
                 offset = (page - 1) * rows_per_page
@@ -663,12 +676,41 @@ def index():
                 if new_points_in <= 0 or oldest_row_points_out is None:
                     print("No more rows in dublbubl. Exiting loop.")
                     break
-        
-        flash("Bubble created successfully!", "success")
-        return redirect(url_for("index"))
+
+        try:
+            points = request.form.get('points')
+
+            if not points or not points.isdigit():
+                flash("Invalid points value.", "danger")
+                return redirect(request.url)  # Redirect back to the same page on error
+
+            # Successfully created bubble
+            flash("Bubble created successfully!", "success")
+
+            # Get the current page from the form or query parameters
+            current_page = request.form.get('page') or request.args.get('page', 1)  # Default to 1 if no page param
+            
+            # Convert current_page to an integer
+            current_page = int(current_page)
+
+            # Check if the current page exists (ensure that the page is within valid range)
+            total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+            rows_per_page = 20
+            total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Calculate total pages
+
+            # If the current page is greater than the total number of pages, set the page to the last valid page
+            if current_page > total_pages:
+                current_page = total_pages if total_pages > 0 else 1
+
+            # Redirect back to the same page, including the page number
+            return redirect(url_for('index', page=current_page))  # Redirect with 'page' query parameter
+
+        except Exception as e:
+            flash(f"An error occurred: {str(e)}", "danger")
+            return redirect(request.url)  # In case of an error, you can fallback to the same page
         
     else:
-        return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, updated_rows=updated_rows, total_pages=total_pages, current_page=page)
+        return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, updated_rows=updated_rows, total_pages=total_pages, current_page=page, page=page)
 
 
 if __name__ == "__main__":

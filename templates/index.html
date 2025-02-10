@@ -180,8 +180,12 @@
   </div>
 </div>  
 
-<form action="/" method="post" class="d-flex justify-content-center align-items-center">
+<form id="bubbleForm" action="/" method="post" class="d-flex justify-content-center align-items-center">
   <input class="form-control me-2 w-auto" name="points" placeholder="Enter points" type="number">
+  
+  <!-- Add hidden input for page parameter -->
+  <input type="hidden" name="page" value="{{ page }}">
+
   <button class="btn btn-primary" type="submit">Create Bubble</button>
 </form>
 
@@ -267,9 +271,6 @@
 
 
 
-
-
-
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script>
 var user_id = "{{ session['user_id'] }}"; // Dynamically set the user ID from the session or context
@@ -328,6 +329,12 @@ if (window.location.hostname === "localhost" || window.location.hostname === "12
       }
   });
 
+
+
+
+
+
+  
 
 
 // Listen for "update_table" events from the server
@@ -450,6 +457,24 @@ socket.on("update_user_history", function (data) {
     });
   }, 5000); // 5 seconds
   
+
+
+
+  // Save the scroll position before redirect
+  window.addEventListener('beforeunload', function() {
+      localStorage.setItem('scrollPosition', window.scrollY);
+  });
+
+  // Restore the scroll position after the page reloads
+  window.addEventListener('load', function() {
+      var scrollPosition = localStorage.getItem('scrollPosition');
+      if (scrollPosition) {
+          window.scrollTo(0, scrollPosition);
+          localStorage.removeItem('scrollPosition');  // Clear the stored value
+      }
+  });
+
+
 
 
 </script>
