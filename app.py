@@ -43,18 +43,18 @@ Session(app)
 # cur = con.cursor()
 
 def get_db_connection():
-    DATABASE_URL = os.getenv("DATABASE_URL")  # Ensure DATABASE_URL is correctly set in the environment
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    print(f"DATABASE_URL: {DATABASE_URL}")  # Add logging here for debugging
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL environment variable is not set.")
     
-    # Establish a connection to the database
-    connection = psycopg2.connect(DATABASE_URL, sslmode='require')
-    
-    # Create a cursor object using the connection
-    cursor = connection.cursor()
-
-    # Return both the connection and cursor
-    return connection, cursor
+    try:
+        connection = psycopg2.connect(DATABASE_URL, sslmode='require')
+        cursor = connection.cursor()
+        return connection, cursor
+    except Exception as e:
+        print(f"Error connecting to the database: {e}")
+        return None, None
 
 
 
@@ -314,6 +314,11 @@ def index():
     # Get the database connection and cursor
     con, cur = get_db_connection()
 
+    con, cur = get_db_connection()
+    
+    if con is None or cur is None:
+        return "Error: Unable to connect to the database."
+    
     updated_rows = []  # Initialize with an empty list
 
     # Start the timer when the user accesses the index
@@ -327,6 +332,9 @@ def index():
         except Exception as e:
             print(f"Error executing query: {e}")
             return "Error fetching data from the database."
+        finally:
+            con.close()
+
 
         # Get current page number from query parameters, default to 1
         page = request.args.get("page", 1, type=int)
