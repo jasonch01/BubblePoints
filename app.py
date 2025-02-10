@@ -55,7 +55,7 @@ def init_db():
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY NOT NULL,
-        username TEXT NOT NULL,
+        username TEXT NOT NULL UNIQUE,
         hash TEXT NOT NULL,
         points INTEGER NOT NULL DEFAULT 10000,
         total_points_earned INTEGER NOT NULL DEFAULT 0,
