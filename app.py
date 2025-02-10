@@ -1,4 +1,5 @@
 import os
+import psycopg2
 import sqlite3
 import datetime
 import threading
@@ -38,8 +39,16 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Connect sqlite3 database
-con = sqlite3.connect("dublbubl.db", check_same_thread=False)
-cur = con.cursor()
+# con = sqlite3.connect("dublbubl.db", check_same_thread=False)
+# cur = con.cursor()
+
+# Connect to PostgreSQL database
+DATABASE_URL = os.getenv("postgres://u8h1ubkjl62htc:p7f01d11624e4e45ca4145b1401aa1162db360c287bed1a5a1380b55b99eb9454@c9mq4861d16jlm.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d8bm33kgoetn8k")  # Heroku provides this as an environment variable
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+cur = conn.cursor()
+
+
+
 
 def init_db():
     # Create users table
@@ -92,6 +101,8 @@ def init_db():
         date_created TEXT NOT NULL        
     )   
     """)
+
+    conn.commit()
 
 init_db()
 
