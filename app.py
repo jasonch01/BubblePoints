@@ -41,15 +41,20 @@ Session(app)
 # Connect sqlite3 database
 # con = sqlite3.connect("dublbubl.db", check_same_thread=False)
 # cur = con.cursor()
-DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Function to establish and return a database connection
 def get_db_connection():
-# Connect to PostgreSQL database
+    DATABASE_URL = os.getenv("DATABASE_URL")  # Ensure DATABASE_URL is correctly set in the environment
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL environment variable is not set.")
+    
+    # Establish a connection to the database
     connection = psycopg2.connect(DATABASE_URL, sslmode='require')
-    cursor = con.cursor()
-    return connection, cursor
+    
+    # Create a cursor object using the connection
+    cursor = connection.cursor()
 
+    # Return both the connection and cursor
+    return connection, cursor
 
 
 
