@@ -46,9 +46,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # Function to establish and return a database connection
 def get_db_connection():
 # Connect to PostgreSQL database
-    con = psycopg2.connect(DATABASE_URL, sslmode='require')
-    cur = con.cursor()
-    return con, cur
+    connection = psycopg2.connect(DATABASE_URL, sslmode='require')
+    cursor = con.cursor()
+    return connection, cursor
 
 
 
@@ -306,14 +306,22 @@ def on_connect():
 @app.route("/", methods=["GET", "POST"])
 def index():
 
+    # Get the database connection and cursor
+    con, cur = get_db_connection()
+
     updated_rows = []  # Initialize with an empty list
 
     # Start the timer when the user accesses the index
     start_timer()
 
     try:
-        # Check database for dublbubl table
-        dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
+        try:
+            # Try fetching rows from the dublbubl table
+            dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
+            print(f"Fetched {len(dublbubl)} rows from the dublbubl table")
+        except Exception as e:
+            print(f"Error executing query: {e}")
+            return "Error fetching data from the database.")
 
         # Get current page number from query parameters, default to 1
         page = request.args.get("page", 1, type=int)
