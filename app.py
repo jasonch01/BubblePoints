@@ -321,7 +321,7 @@ def index():
             print(f"Fetched {len(dublbubl)} rows from the dublbubl table")
         except Exception as e:
             print(f"Error executing query: {e}")
-            return "Error fetching data from the database.")
+            return "Error fetching data from the database."
 
         # Get current page number from query parameters, default to 1
         page = request.args.get("page", 1, type=int)
