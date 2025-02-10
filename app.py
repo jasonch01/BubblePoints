@@ -54,7 +54,7 @@ def init_db():
     # Create users table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        id SERIAL PRIMARY KEY NOT NULL,
         username TEXT NOT NULL,
         hash TEXT NOT NULL,
         points INTEGER NOT NULL DEFAULT 10000,
@@ -66,7 +66,7 @@ def init_db():
     # Create dublbubl table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS dublbubl (
-        row_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        row_id SERIAL PRIMARY KEY NOT NULL,,
         user_id INTEGER NOT NULL,
         username TEXT NOT NULL,
         points_in INTEGER NOT NULL,
@@ -80,7 +80,7 @@ def init_db():
     # Create dublbubl history table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS dublbubl_history (
-        history_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        history_id SERIAL PRIMARY KEY NOT NULL,,
         user_id INTEGER NOT NULL,
         username TEXT NOT NULL,       
         row_id INTEGER NOT NULL,
@@ -96,7 +96,7 @@ def init_db():
     # Create points_tracker table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS points_tracker (
-        tracker_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        tracker_id SERIAL PRIMARY KEY NOT NULL,
         current_points_in INTEGER NOT NULL,
         date_created TEXT NOT NULL        
     )   
