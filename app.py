@@ -72,7 +72,7 @@ def init_db():
         points_in INTEGER NOT NULL,
         points_out INTEGER NOT NULL,
         date_created TEXT NOT NULL,        
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (username) REFERENCES users(username)
     )   
     """)
