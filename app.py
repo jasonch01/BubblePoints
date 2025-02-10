@@ -66,7 +66,7 @@ def init_db():
     # Create dublbubl table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS dublbubl (
-        row_id SERIAL PRIMARY KEY NOT NULL,,
+        row_id SERIAL PRIMARY KEY NOT NULL,
         user_id INTEGER NOT NULL,
         username TEXT NOT NULL,
         points_in INTEGER NOT NULL,
@@ -80,7 +80,7 @@ def init_db():
     # Create dublbubl history table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS dublbubl_history (
-        history_id SERIAL PRIMARY KEY NOT NULL,,
+        history_id SERIAL PRIMARY KEY NOT NULL,
         user_id INTEGER NOT NULL,
         username TEXT NOT NULL,       
         row_id INTEGER NOT NULL,
