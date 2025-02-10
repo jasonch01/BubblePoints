@@ -43,7 +43,7 @@ Session(app)
 # cur = con.cursor()
 
 # Connect to PostgreSQL database
-DATABASE_URL = os.getenv("postgres://u8h1ubkjl62htc:p7f01d11624e4e45ca4145b1401aa1162db360c287bed1a5a1380b55b99eb9454@c9mq4861d16jlm.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d8bm33kgoetn8k")  # Heroku provides this as an environment variable
+DATABASE_URL = os.getenv("DATABASE_URL")
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cur = conn.cursor()
 
