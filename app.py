@@ -103,6 +103,7 @@ def init_db():
     """)
 
     conn.commit()
+    conn.close()
 
 init_db()
 
@@ -302,8 +303,11 @@ def index():
     start_timer()
 
     try:
-        # Check database for dublbubl table
-        dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
+        try:
+            # Check database for dublbubl table
+            dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
+        except Exception as e:
+            print(f"Error executing query: {e}")
 
         # Get current page number from query parameters, default to 1
         page = request.args.get("page", 1, type=int)
