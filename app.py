@@ -44,8 +44,8 @@ Session(app)
 
 # Connect to PostgreSQL database
 DATABASE_URL = os.getenv("DATABASE_URL")
-conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-cur = conn.cursor()
+con = psycopg2.connect(DATABASE_URL, sslmode='require')
+cur = con.cursor()
 
 
 
@@ -317,7 +317,7 @@ def index():
 
          # Fetch limited rows based on pagination
         dublbubl = cur.execute(
-            "SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT ? OFFSET ?", 
+            "SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT $1 OFFSET $2", 
             (rows_per_page, offset)
         ).fetchall()
 
@@ -457,7 +457,7 @@ def index():
 
             # Fetch rows for the current page using LIMIT and OFFSET
             updated_rows = cur.execute(
-                "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT ? OFFSET ?",
+                "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT $1 OFFSET $2",
                 (rows_per_page, offset)
             ).fetchall()
 
@@ -666,7 +666,7 @@ def index():
 
                 # Fetch rows for the current page using LIMIT and OFFSET
                 updated_rows = cur.execute(
-                    "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT ? OFFSET ?",
+                    "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT $1 OFFSET $2",
                     (rows_per_page, offset)
                 ).fetchall()
 
