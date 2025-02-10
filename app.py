@@ -41,16 +41,23 @@ Session(app)
 # Connect sqlite3 database
 # con = sqlite3.connect("dublbubl.db", check_same_thread=False)
 # cur = con.cursor()
-
-# Connect to PostgreSQL database
 DATABASE_URL = os.getenv("DATABASE_URL")
-con = psycopg2.connect(DATABASE_URL, sslmode='require')
-cur = con.cursor()
+
+# Function to establish and return a database connection
+def get_db_connection():
+# Connect to PostgreSQL database
+    con = psycopg2.connect(DATABASE_URL, sslmode='require')
+    cur = con.cursor()
+    return con, cur
 
 
 
 
 def init_db():
+
+    # Get the database connection and cursor
+    con, cur = get_db_connection()
+
     # Create users table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
@@ -102,6 +109,11 @@ def init_db():
     )   
     """)
 
+    # Commit changes and close the connection
+    con.commit()
+    con.close()
+
+# Initialize database
 init_db()
 
 def is_valid_email(email):
