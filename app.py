@@ -1,5 +1,4 @@
 import os
-import psycopg2
 import sqlite3
 import datetime
 import threading
@@ -39,35 +38,15 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Connect sqlite3 database
-# con = sqlite3.connect("dublbubl.db", check_same_thread=False)
-# cur = con.cursor()
-
-def get_db_connection():
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    print(f"DATABASE_URL: {DATABASE_URL}")  # Add logging here for debugging
-    if not DATABASE_URL:
-        raise ValueError("DATABASE_URL environment variable is not set.")
-    
-    try:
-        connection = psycopg2.connect(DATABASE_URL, sslmode='require')
-        cursor = connection.cursor()
-        return connection, cursor
-    except Exception as e:
-        print(f"Error connecting to the database: {e}")
-        return None, None
-
-
+con = sqlite3.connect("dublbubl.db", check_same_thread=False)
+cur = con.cursor()
 
 def init_db():
-
-    # Get the database connection and cursor
-    con, cur = get_db_connection()
-
     # Create users table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY NOT NULL,
-        username TEXT NOT NULL UNIQUE,
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        username TEXT NOT NULL,
         hash TEXT NOT NULL,
         points INTEGER NOT NULL DEFAULT 10000,
         total_points_earned INTEGER NOT NULL DEFAULT 0,
@@ -78,13 +57,13 @@ def init_db():
     # Create dublbubl table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS dublbubl (
-        row_id SERIAL PRIMARY KEY NOT NULL,
+        row_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         user_id INTEGER NOT NULL,
         username TEXT NOT NULL,
         points_in INTEGER NOT NULL,
         points_out INTEGER NOT NULL,
         date_created TEXT NOT NULL,        
-        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
         FOREIGN KEY (username) REFERENCES users(username)
     )   
     """)
@@ -92,7 +71,7 @@ def init_db():
     # Create dublbubl history table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS dublbubl_history (
-        history_id SERIAL PRIMARY KEY NOT NULL,
+        history_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         user_id INTEGER NOT NULL,
         username TEXT NOT NULL,       
         row_id INTEGER NOT NULL,
@@ -108,17 +87,12 @@ def init_db():
     # Create points_tracker table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS points_tracker (
-        tracker_id SERIAL PRIMARY KEY NOT NULL,
+        tracker_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         current_points_in INTEGER NOT NULL,
         date_created TEXT NOT NULL        
     )   
     """)
 
-    # Commit changes and close the connection
-    con.commit()
-    con.close()
-
-# Initialize database
 init_db()
 
 def is_valid_email(email):
@@ -311,30 +285,14 @@ def on_connect():
 @app.route("/", methods=["GET", "POST"])
 def index():
 
-    # Get the database connection and cursor
-    con, cur = get_db_connection()
-
-    con, cur = get_db_connection()
-    
-    if con is None or cur is None:
-        return "Error: Unable to connect to the database."
-    
     updated_rows = []  # Initialize with an empty list
 
     # Start the timer when the user accesses the index
     start_timer()
 
     try:
-        try:
-            # Try fetching rows from the dublbubl table
-            dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
-            print(f"Fetched {len(dublbubl)} rows from the dublbubl table")
-        except Exception as e:
-            print(f"Error executing query: {e}")
-            return "Error fetching data from the database."
-        finally:
-            con.close()
-
+        # Check database for dublbubl table
+        dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
 
         # Get current page number from query parameters, default to 1
         page = request.args.get("page", 1, type=int)
@@ -347,7 +305,7 @@ def index():
 
          # Fetch limited rows based on pagination
         dublbubl = cur.execute(
-            "SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT $1 OFFSET $2", 
+            "SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT ? OFFSET ?", 
             (rows_per_page, offset)
         ).fetchall()
 
@@ -487,7 +445,7 @@ def index():
 
             # Fetch rows for the current page using LIMIT and OFFSET
             updated_rows = cur.execute(
-                "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT $1 OFFSET $2",
+                "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT ? OFFSET ?",
                 (rows_per_page, offset)
             ).fetchall()
 
@@ -696,7 +654,7 @@ def index():
 
                 # Fetch rows for the current page using LIMIT and OFFSET
                 updated_rows = cur.execute(
-                    "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT $1 OFFSET $2",
+                    "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT ? OFFSET ?",
                     (rows_per_page, offset)
                 ).fetchall()
 
