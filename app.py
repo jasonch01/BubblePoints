@@ -898,7 +898,7 @@ def login():
         user = db.session.query(Users).filter(Users.username.ilike(username)).first()
 
         # Check if username exists and password is correct
-        if user is None or not check_password_hash(user.password, password):
+        if user is None or not check_password_hash(user.hash, password):
             return render_template("login.html", message="Invalid username and/or password")
 
         # Log the user in by saving their id in the session
