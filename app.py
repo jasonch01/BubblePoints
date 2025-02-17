@@ -12,12 +12,18 @@ monkey.patch_all()
 # from secret_key import secret_key as default_key
 
 from dotenv import load_dotenv
-
-from flask import Flask, request, redirect, render_template, request, session, flash, url_for
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask import Flask, request, redirect, render_template, request, session, flash, url_for, current_app
 from flask_socketio import SocketIO, emit, join_room
 from flask_session import Session
 from functools import wraps
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from sqlalchemy import create_engine, func
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -37,63 +43,84 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
+
 # Connect sqlite3 database
-con = sqlite3.connect("dublbubl.db", check_same_thread=False)
-cur = con.cursor()
+# con = sqlite3.connect("dublbubl.db", check_same_thread=False)
+# cur = con.cursor()
 
+
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy()
+db.init_app(app)  # Register db with the app
+migrate = Migrate(app, db)
+
+
+class Users(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    username = db.Column(db.String(150), nullable=False)
+    hash = db.Column(db.String(255), nullable=False)
+    points = db.Column(db.Integer, default=10000)
+    total_points_earned = db.Column(db.Integer, default=0)
+    email = db.Column(db.String(255), unique=True)
+
+class Dublbubl(db.Model):
+    row_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # updated from 'user' to 'users'
+    username = db.Column(db.String(150), nullable=False)
+    points_in = db.Column(db.Integer, nullable=False)
+    points_out = db.Column(db.Integer, nullable=False)
+    date_created = db.Column(db.String(255), nullable=False)
+
+class DublbublHistory(db.Model):
+    history_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # updated from 'user' to 'users'
+    username = db.Column(db.String(150), nullable=False)
+    row_id = db.Column(db.Integer, nullable=False)
+    creator_id = db.Column(db.Integer, nullable=False)
+    creator_username = db.Column(db.String(150), nullable=False)
+    points_in = db.Column(db.Integer, nullable=False)
+    points_out = db.Column(db.Integer, nullable=False)
+    date_created = db.Column(db.String(255), nullable=False)
+    date_archived = db.Column(db.String(255), nullable=False)
+
+class PointsTracker(db.Model):
+    tracker_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    current_points_in = db.Column(db.Integer, nullable=False)
+    date_created = db.Column(db.String(255), nullable=False)
+
+
+# Assuming you have already defined the Base class and models
+Base = declarative_base()
+
+# Function to initialize and create all tables in the database
 def init_db():
-    # Create users table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        username TEXT NOT NULL,
-        hash TEXT NOT NULL,
-        points INTEGER NOT NULL DEFAULT 10000,
-        total_points_earned INTEGER NOT NULL DEFAULT 0,
-        email TEXT UNIQUE
-    )
-    """)
-
-    # Create dublbubl table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS dublbubl (
-        row_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        user_id INTEGER NOT NULL,
-        username TEXT NOT NULL,
-        points_in INTEGER NOT NULL,
-        points_out INTEGER NOT NULL,
-        date_created TEXT NOT NULL,        
-        FOREIGN KEY (user_id) REFERENCES users(id)
-        FOREIGN KEY (username) REFERENCES users(username)
-    )   
-    """)
-
-    # Create dublbubl history table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS dublbubl_history (
-        history_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        user_id INTEGER NOT NULL,
-        username TEXT NOT NULL,       
-        row_id INTEGER NOT NULL,
-        creator_id INTEGER NOT NULL,
-        creator_username TEXT NOT NULL,
-        points_in INTEGER NOT NULL,
-        points_out INTEGER NOT NULL,
-        date_created TEXT NOT NULL,
-        date_archived TEXT NOT NULL
-    )   
-    """)
-
-    # Create points_tracker table
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS points_tracker (
-        tracker_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        current_points_in INTEGER NOT NULL,
-        date_created TEXT NOT NULL        
-    )   
-    """)
+    try:
+        # Create the application context
+        with app.app_context():
+            # This will create the tables in the database if they don't exist
+            db.create_all()
+            print("Database tables created successfully.")
+    except Exception as e:
+        print(f"Error while initializing the database: {e}")
 
 init_db()
+
+# Create an engine
+engine = create_engine(DATABASE_URL)
+
+# Create a sessionmaker bound to the engine
+Session = sessionmaker(bind=engine)
+
+# Define a base for ORM models (if needed)
+Base = declarative_base()
+
 
 def is_valid_email(email):
     """Check if email is valid and case-insensitive."""
@@ -286,57 +313,55 @@ def on_connect():
 def index():
 
     updated_rows = []  # Initialize with an empty list
-
     # Start the timer when the user accesses the index
     start_timer()
 
     try:
-        # Check database for dublbubl table
-        dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
+        with current_app.app_context():  # Ensure we are in the app context for DB operations
+            # Check database for dublbubl table
+            # dublbubl = cur.execute("SELECT * FROM dublbubl").fetchall()
+            dublbubl = Dublbubl.query.all()
 
-        # Get current page number from query parameters, default to 1
-        page = request.args.get("page", 1, type=int)
-        print(f"📢 Page received in request: {page}")  # Debugging output
-        print(f"Request URL: {request.url}")
-        print(f"Request Args: {request.args}")
+            # Get current page number from query parameters, default to 1
+            page = request.args.get("page", 1, type=int)
+            print(f"📢 Page received in request: {page}")  # Debugging output
+            print(f"Request URL: {request.url}")
+            print(f"Request Args: {request.args}")
 
-        rows_per_page = 20  # Limit rows per page
-        offset = (page - 1) * rows_per_page  # Calculate offset
+            rows_per_page = 20  # Limit rows per page
+            offset = (page - 1) * rows_per_page  # Calculate offset
 
-         # Fetch limited rows based on pagination
-        dublbubl = cur.execute(
-            "SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT ? OFFSET ?", 
-            (rows_per_page, offset)
-        ).fetchall()
+            # Fetch limited rows based on pagination
+            dublbubl = Dublbubl.query.order_by(Dublbubl.row_id.asc()).offset(offset).limit(rows_per_page).all()
 
-        # Get total row count to calculate total pages
-        total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
-        total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Round up
-
-
-
-        # Fetch current points_in from points_tracker
-        current_points_in = cur.execute("SELECT current_points_in FROM points_tracker").fetchone()
+            # Get total row count to calculate total pages
+            total_rows = Dublbubl.query.count()
+            total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Round up
 
 
 
-        # Fetch the oldest row's points_out
-        oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
+            # Fetch current points_in from points_tracker
+            current_points_in = PointsTracker.query.with_entities(PointsTracker.current_points_in).first()
 
-    
 
-        # Check if user is logged in
-        user_id = session.get("user_id")
+            # Fetch the oldest row's points_out
+            oldest_row_points_out = Dublbubl.query.with_entities(Dublbubl.points_out) \
+                .order_by(Dublbubl.row_id.asc()).first()
 
-        # Fetch the necessary data (e.g., user details) for logged-in users
-        if user_id:
-            # Fetch the user details
-            user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchall()
-            # Fetch the last 5 user's dublbubl history
-            user_history = cur.execute("SELECT * FROM dublbubl_history WHERE creator_id = ? ORDER BY row_id DESC LIMIT 5", (user_id,)).fetchall()
-        else:
-            user = None
-            user_history = None
+        
+
+            # Check if user is logged in
+            user_id = session.get("user_id")
+
+            # Fetch the necessary data (e.g., user details) for logged-in users
+            if user_id:
+                # Fetch the user details
+                user = Users.query.get(user_id)
+                # Fetch the last 5 user's dublbubl history
+                user_history = Dublbubl.query.filter_by(user_id=user_id).order_by(Dublbubl.row_id.desc()).limit(5).all()
+            else:
+                user = None
+                user_history = None
 
     except sqlite3.OperationalError as e:
         print("Error: dublbubl_history table does not exist, creating it.")
@@ -354,7 +379,7 @@ def index():
 
     # Emit real-time update for current_points_in and points_in_required
     socketio.emit("update_points_info", {
-        "current_points_in": current_points_in[0],  # Emitting the actual points_in value
+        "current_points_in": current_points_in[0] if current_points_in else 0,  # Emitting the actual points_in value
         "points_in_required": points_in_required  # Emitting the calculated points_in_required
     })  # Broadcasts to all connected clients
 
@@ -384,15 +409,21 @@ def index():
             flash("Points must be between 1 and 10000", "danger")
             return redirect(url_for("index"))
     
+        # Create a new session for each request
+        db_session = Session()
     
-    
-         # Check database for user details
-        user_id = session["user_id"]
-        user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        # Check database for user details
+        user_id = session.get("user_id")
+        # Fetch the user from the database using SQLAlchemy
+        user = db_session.query(Users).filter(Users.id == user_id).first()
 
+        # Check if user is None
+        if user is None:
+            flash("User not found", "danger")
+            return redirect(url_for("index"))
+        
         # Fetch user's point balance
-        current_points = cur.execute("SELECT points FROM users WHERE id = ?", (user[0],)).fetchone()
-        current_points = current_points[0] if current_points else 0  # Default to 0 if no value exists
+        current_points = user.points if user.points else 0  # Default to 0 if no points exist
         
         # Ensure user has enough points     
         if current_points < points:
@@ -410,23 +441,39 @@ def index():
             else:
                 points_out = points * 1.25  # Otherwise, points_out equals points_in (e.g., for smaller amounts)
 
-            # Insert row into dublbubl
-            cur.execute("""
-            INSERT INTO dublbubl (row_id, user_id, username, points_in, points_out, date_created)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """, (None, user[0], user[1], points, (points_out), current_date))
+            # Definre current_date
+            current_date = datetime.datetime.now()
 
-            # Commit the changes to the dublbubl database
-            con.commit()
+            # Check if a PointsTracker entry exists
+            points_tracker = PointsTracker.query.first()
 
+            if not points_tracker:
+                # If no entry exists, create an initial one
+                points_tracker = PointsTracker(
+                    current_points_in=0,  # Set initial points to 0
+                    date_created=current_date
+                )
+                db.session.add(points_tracker)
+                db.session.commit()  # Commit the new entry
+
+            # Create a new entry in the dublbubl table
+            new_row = Dublbubl(
+                user_id=user.id,
+                username=user.username,
+                points_in=points,
+                points_out=points_out,
+                date_created=current_date
+            )
+            db.session.add(new_row)
+            db.session.commit()
+            
             # Fetch all updated rows to send to the front-end
-            updated_rows = cur.execute("""
-                SELECT * FROM dublbubl
-                ORDER BY row_id ASC
-            """).fetchall()
+            # Fetch updated rows
+            updated_rows = Dublbubl.query.order_by(Dublbubl.row_id.asc()).all()
 
             # Get total row count to calculate total pages
-            total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+            # Get the total row count
+            total_rows = Dublbubl.query.count()
 
             page = request.form.get("page", 1, type=int)
             print(f"📢 Page received in post request: {page}")  # Debugging output
@@ -444,46 +491,51 @@ def index():
             print(f"Fetching rows starting from: {offset}, Limit: {rows_per_page}")
 
             # Fetch rows for the current page using LIMIT and OFFSET
-            updated_rows = cur.execute(
-                "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT ? OFFSET ?",
-                (rows_per_page, offset)
-            ).fetchall()
+            # Fetch rows for current page
+            updated_rows = Dublbubl.query.order_by(Dublbubl.date_created, Dublbubl.row_id).limit(rows_per_page).offset(offset).all()
+
+            # Serialize Dublbubl objects to dictionaries and remove the internal SQLAlchemy state
+            updated_rows_dict = [
+                {key: value for key, value in row.__dict__.items() if key != '_sa_instance_state'} 
+                for row in updated_rows
+            ]
 
             # Emit the updated rows along with pagination details
             socketio.emit("update_table", {
-                "rows": updated_rows,
+                "rows": updated_rows_dict,
                 "total_pages": total_pages,
                 "current_page": page
             })
 
             # Deduct from total points and update it in the database
             total_points = current_points - points
+            print(f"total_points: {total_points}")
 
             # Check total points is not negative
             if total_points < 0:
                 return "Error: Insufficient points balance."
 
-            cur.execute("UPDATE users SET points = ? WHERE id = ?", (total_points, user[0]))
-            # Commit the changes to the dublbubl database
-            con.commit()
+            # Fetch the user from the database using SQLAlchemy
+            user_to_update = Users.query.get(user.id)  # Assuming `user` is an instance of the `User` model
+            user_to_update.points = total_points
+            db.session.commit()
 
             # Emit an event to update the user's points balance in real-time (only the point_balance)
             socketio.emit("update_point_balance", {
                 "point_balance": total_points  # Emitting only the total points balance
-            }, room=user[0])  # Emits only to the specific user
-            print(f"Emitting update to room: {user[0]} with new balance: {total_points}")
+            }, room=user.id)  # Emits only to the specific user
+            print(f"Emitting update to room: {user.id} with new balance: {total_points}")
 
  
         except Exception as e:
             print(f"Error inserting row into dublbubl: {e}")
-            con.rollback()
+            db.session.rollback()
             
         # Fetch current_points_in value
-        current_points_in = cur.execute("SELECT current_points_in FROM points_tracker").fetchone()    
-
+        current_points_in = PointsTracker.query.with_entities(PointsTracker.current_points_in).first()
 
         # Fetch the number of rows in dublbubl
-        row_count = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+        row_count = Dublbubl.query.count()
         print(f"Number of rows in dublbubl: {row_count}")
 
 
@@ -492,12 +544,23 @@ def index():
 
             if current_points_in:
                 new_points_in = current_points_in[0] + points
-                cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (new_points_in, current_date))
+                # Retrieve the PointsTracker row itself
+                points_tracker = PointsTracker.query.first()  # Assuming it's a single row and we need to update it
+                points_tracker.current_points_in = new_points_in
+                points_tracker.date_created = current_date
+                db.session.add(points_tracker)
             else:
-                cur.execute("INSERT INTO points_tracker (current_points_in, date_created) VALUES (?, ?)", (points, current_date))
+                # Retrieve the PointsTracker row itself
+                points_tracker = PointsTracker.query.first()  # Assuming it's a single row and we need to update it
+                new_entry = PointsTracker(
+                    current_points_in=points,
+                    date_created=current_date
+                )
+                # Add the new entry to the session and commit the transaction
+                db.session.add(new_entry)
 
-            # Commit the changes to the points_tracker database   
-            con.commit()
+            # Commit the changes to the points_tracker database
+            db.session.commit()
 
         else:
             # If there is one row, don't update points in points_tracker
@@ -505,30 +568,33 @@ def index():
             print(f"New points in is { new_points_in }")
 
 
-        oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
+        oldest_row_points_out = Dublbubl.query.with_entities(Dublbubl.points_out).order_by(Dublbubl.row_id.asc()).first()
         
-        # Print to debug
-        print(f"Oldest row points out: {oldest_row_points_out[0]}")
+
 
         # Check if there are no rows or if points_out is None
         if oldest_row_points_out is None:
             print("No rows found in dublbubl. Exiting loop.")
-        else:
+        else:    
+            # Print to debug
+            print(f"Oldest row points out: {oldest_row_points_out[0]}")
+            
             # If total points added exceed twice the oldest row's points, delete the oldest row
             while new_points_in >= oldest_row_points_out[0]:
 
                 
 
                 # Get the row ID of the oldest row
-                oldest_row_id = cur.execute("SELECT row_id FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
-                oldest_row = cur.execute("SELECT * FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
-
+                oldest_row_id = Dublbubl.query.with_entities(Dublbubl.row_id).order_by(Dublbubl.row_id.asc()).first()
+                oldest_row = db_session.query(Dublbubl).order_by(Dublbubl.row_id.asc()).first()
+                if oldest_row:
+                    print(oldest_row.row_id)  # Access the row_id field of the oldest row
 
 
                 # Ensure that oldest_row is not None before checking total points
                 if oldest_row is not None:
                         # Fetch user's current total points
-                        current_total_points = cur.execute("SELECT total_points_earned FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
+                        current_total_points = Users.query.with_entities(Users.total_points_earned).filter(Users.id == oldest_row.user_id).first()
 
                         if current_total_points is None:
                             print("No points found for this user.")
@@ -539,7 +605,7 @@ def index():
                         print(f"Current total points: {current_total_points}")
 
                         # Fetch user's point balance only if oldest_row is not None
-                        points = cur.execute("SELECT points FROM users WHERE id = ?", (oldest_row[1],)).fetchone()
+                        points = Users.query.with_entities(Users.points).filter(Users.id == oldest_row.user_id).first()
 
                         if points is None:
                             print("No points balance found for this user.")
@@ -553,69 +619,87 @@ def index():
 
                 #Insert the oldest row into dublbubl_history
                 if oldest_row:
-                    cur.execute("""
-                    INSERT INTO dublbubl_history (user_id, username, row_id, creator_id, creator_username, points_in, points_out, date_created, date_archived)
-                    VALUES (?, ? ,?, ?, ? ,?, ?, ?, ?)
-                    """, (user[0], user[1], oldest_row[0], oldest_row[1], oldest_row[2], oldest_row[3], oldest_row[4], oldest_row[5], current_date))
-                    con.commit()
+                    # Create a new instance of the DublbublHistory model
+                    new_history_entry = DublbublHistory(
+                        user_id=user.id,  # Assuming user.id is the correct field
+                        username=user.username,
+                        row_id=oldest_row.row_id,  # Assuming `oldest_row` is an instance of `Dublbubl`
+                        creator_id=oldest_row.user_id,
+                        creator_username=oldest_row.username,
+                        points_in=oldest_row.points_in,
+                        points_out=oldest_row.points_out,
+                        date_created=oldest_row.date_created,
+                        date_archived=current_date # Adjust if date_archived is set at a different time
+                    )
+                    # Add the new history entry to the session
+                    db_session.add(new_history_entry)
+
+                    # Commit the transaction
+                    db_session.commit()
 
                     # Fetch the latest 5 history records from all users
-                    updated_user_history = cur.execute("""
-                        SELECT * FROM dublbubl_history 
-                        WHERE creator_id = ?
-                        ORDER BY row_id DESC 
-                        LIMIT 5
-                    """, (user[0],)).fetchall()
+                    updated_user_history = db_session.query(DublbublHistory).filter(DublbublHistory.creator_id == user.id).order_by(DublbublHistory.row_id.desc()).limit(5).all()
 
-                    print(f"Checking user[0]: {user[0]}")
+                    print(f"Checking user[0]: {user.id}")
 
                     # Print the user_id and the fetched history to debug
-                    print(f"Fetching history for creator_id: {user[0]}")
+                    print(f"Fetching history for creator_id: {user.id}")
                     print("Fetched history:", updated_user_history)
 
                     # Emit an event to update the user's history in real-time
                     socketio.emit("update_user_history", {
                         "history": [
                             {
-                                "bubble_number": row[3], 
-                                "points_invested": row[6], 
-                                "points_earned": row[7], 
-                                "created_on": row[8], 
-                                "archived_on": row[9]
+                                "bubble_number": row.row_id, 
+                                "points_invested": row.points_in, 
+                                "points_earned": row.points_out, 
+                                "created_on": row.date_created, 
+                                "archived_on": row.date_archived
                             } for row in updated_user_history
                         ]
-                    }, room=user[0])  # Emits only to the specific user
-                    print(f"Emitting update to room: {user[0]} with updated user history: {oldest_row[4]}")
+                    }, room=user.id)  # Emits only to the specific user
+                    print(f"Emitting update to room: {user.id} with updated user history: {oldest_row.points_out}")
 
 
 
                     # Add total_points_earned and update it in the database
-                    total_points_earned = current_total_points + oldest_row[4]
-                    cur.execute("UPDATE users SET total_points_earned = ? WHERE id = ?", (total_points_earned, oldest_row[1]))
-                    con.commit()
+                    total_points_earned = current_total_points + oldest_row.points_out
 
-                    # Add total points and update it in the database
-                    total_points = points + oldest_row[4]
-                    cur.execute("UPDATE users SET points = ? WHERE id = ?", (total_points, oldest_row[1]))
-                    con.commit() 
+                    # Update total_points_earned for the user
+                    user_to_update = db_session.query(Users).filter(Users.id == oldest_row.user_id).first()
+
+                    if user_to_update:
+                        # Add total_points_earned and update it in the database
+                        user_to_update.total_points_earned = total_points_earned
+
+                        # Add total points and update it in the database
+                        total_points = points + oldest_row.points_out
+                        user_to_update.points = total_points
+                        db_session.commit()  # Commit the changes to the database
     
                     # Update current_total_points to reflect new total
                     current_total_points = total_points_earned
 
-                    updated_total_points = cur.execute("SELECT points FROM users WHERE id = ?",(user_id,)).fetchone()
+                    updated_total_points = Users.query.with_entities(Users.points).filter(Users.id == user_id).first()
                     updated_total_points = updated_total_points[0] if updated_total_points else 0
 
                     # Emit an event to update the user's points balance in real-time
                     socketio.emit("update_point_balance", {
                         "point_balance": updated_total_points  # Only emitting the total points balance
                     }, room=user_id)  # Emits only to the specific user
-                    print(f"Emitting update to room: {user_id} with new balance: {updated_total_points}")
+                    print(f"Emitting update to room: {user.id} with new balance: {updated_total_points}")
 
 
                 # Check if oldest_row_id is not None before attempting to delete the row
                 if oldest_row_id is not None:
-                    cur.execute("DELETE FROM dublbubl WHERE row_id = ?", (oldest_row_id[0],))
-                    con.commit()
+                    # Fetch the row to delete
+                    row_to_delete = Dublbubl.query.filter(Dublbubl.row_id == oldest_row_id[0]).first()
+
+                    if row_to_delete:
+                        db.session.delete(row_to_delete)
+                        db.session.commit()
+                    else:
+                        print("Error: Row with row_id {} not found, unable to delete.".format(oldest_row_id[0]))
                 else:
                     print("Error: oldest_row_id is None, unable to delete row.")
 
@@ -623,18 +707,17 @@ def index():
                 remaining_points_in = new_points_in - oldest_row_points_out[0]
 
                 # Update points_tracker with the remaining points
-                cur.execute("UPDATE points_tracker SET current_points_in = ?, date_created = ?", (remaining_points_in, current_date))
-                con.commit()
+                points_tracker = PointsTracker.query.first()  # Assuming there's only one row to update
+                points_tracker.current_points_in = remaining_points_in
+                points_tracker.date_created = current_date
+                db.session.commit()
 
                 # Fetch all updated rows to send to the front-end
-                updated_rows = cur.execute("""
-                    SELECT * FROM dublbubl
-                    ORDER BY row_id ASC
-                """).fetchall()
+                updated_rows = Dublbubl.query.order_by(Dublbubl.row_id.asc()).all()
 
 
                 # Get total row count to calculate total pages
-                total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+                total_rows = db.session.query(Dublbubl).count()
 
                 page = request.form.get("page", 1, type=int)
                 print(f"📢 Page received in post request: {page}")  # Debugging output
@@ -653,24 +736,29 @@ def index():
 
 
                 # Fetch rows for the current page using LIMIT and OFFSET
-                updated_rows = cur.execute(
-                    "SELECT * FROM dublbubl ORDER BY date_created, row_id LIMIT ? OFFSET ?",
-                    (rows_per_page, offset)
-                ).fetchall()
+                updated_rows = Dublbubl.query.order_by(Dublbubl.date_created, Dublbubl.row_id) \
+                    .limit(rows_per_page).offset(offset).all()
+
+                # Serialize Dublbubl objects to dictionaries and remove the internal SQLAlchemy state
+                updated_rows_dict = [
+                    {key: value for key, value in row.__dict__.items() if key != '_sa_instance_state'} 
+                    for row in updated_rows
+                ]
 
                 # Emit the updated rows along with pagination details
                 socketio.emit("update_table", {
-                    "rows": updated_rows,
+                    "rows": updated_rows_dict,
                     "total_pages": total_pages,
                     "current_page": page
                 })
 
                 # Ensure the update is triggered only after database changes
-                print(f"Emitting updated rows to room: {user[0]}")
+                print(f"Emitting updated rows to room: {user.id}")
 
                 new_points_in = remaining_points_in
 
-                oldest_row_points_out = cur.execute("SELECT points_out FROM dublbubl ORDER BY row_id ASC LIMIT 1").fetchone()
+                oldest_row_points_out = Dublbubl.query.with_entities(Dublbubl.points_out) \
+                    .order_by(Dublbubl.row_id.asc()).first()
 
                 # Break the loop if there are no more rows in dublbubl
                 if new_points_in <= 0 or oldest_row_points_out is None:
@@ -694,7 +782,7 @@ def index():
             current_page = int(current_page)
 
             # Check if the current page exists (ensure that the page is within valid range)
-            total_rows = cur.execute("SELECT COUNT(*) FROM dublbubl").fetchone()[0]
+            total_rows = Dublbubl.query.count()
             rows_per_page = 20
             total_pages = (total_rows + rows_per_page - 1) // rows_per_page  # Calculate total pages
 
@@ -710,6 +798,8 @@ def index():
             return redirect(request.url)  # In case of an error, you can fallback to the same page
         
     else:
+        if user is None:
+            user = []  # Pass an empty list instead of None if you want to avoid iteration errors
         return render_template('index.html', dublbubl=dublbubl, user=user, message=message, current_points_in=current_points_in, points_in_required=points_in_required, user_history=user_history, updated_rows=updated_rows, total_pages=total_pages, current_page=page, page=page)
 
 
@@ -757,23 +847,29 @@ def register():
             return render_template("register.html", message="Password must be between 6 to 20 characters, with at least one lowercase letter, one uppercase letter, and one digit")
 
         # Check if the username already exists
-        user = cur.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,)).fetchone()
+        user = db.session.query(Users).filter(func.lower(Users.username) == func.lower(username)).first()
         if user:
             return render_template("register.html", message="Username already exists")
 
         # Check if the email already exists
-        user_email = cur.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", (email,)).fetchone()
+        user_email = db.session.query(Users).filter(func.lower(Users.email) == func.lower(email)).first()
         if user_email:
             return render_template("register.html", message="Email already exists")
 
         # Insert new user if all checks pass
-        cur.execute("INSERT INTO users (username, email, hash) VALUES (?, ?, ?)",
-                    (username, email, generate_password_hash(password)))
-        con.commit()
+        # Create a new user
+        new_user = Users(
+            username=username,
+            email=email,
+            hash=generate_password_hash(password)  # Storing hashed password
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
 
         # Fetch new user ID
-        user = cur.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
-        session["user_id"] = user[0]
+        # Fetch new user ID (after committing the new user)
+        session["user_id"] = new_user.id
 
         return redirect("/")
 
@@ -798,14 +894,15 @@ def login():
             return render_template("login.html", message="Username and password are required")
 
         # Check database for user details (username, hash, and id)
-        user = cur.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,)).fetchone()
+        # Query the database for the user using SQLAlchemy ORM
+        user = db.session.query(Users).filter(Users.username.ilike(username)).first()
 
         # Check if username exists and password is correct
-        if user is None or not check_password_hash(user[2], password):
+        if user is None or not check_password_hash(user.password, password):
             return render_template("login.html", message="Invalid username and/or password")
 
         # Log the user in by saving their id in the session
-        session["user_id"] = user[0]
+        session["user_id"] = user.id
         # Redirect user to index
         return redirect("/")
 

@@ -97,12 +97,10 @@
           </tr>
         </thead>        
         <tbody id="point-balance">
-          {% for user in user %}
-          <tr class="table-light" data-user-id="{{ user[0] }}"> <!-- Assuming user[0] is the user_id -->
-            <td class="table-light">{{ user[1] }}</td> <!-- Username -->
-            <td class="table-light">{{ user[3] }}</td> <!-- Point balance -->
+          <tr class="table-light" data-user-id="{{ user.id }}""> <!-- Assuming user[0] is the user_id -->
+            <td class="table-light">{{ user.username }}</td> <!-- Username -->
+            <td class="table-light">{{ user.points }}</td> <!-- Point balance -->
           </tr>
-          {% endfor %}
         </tbody>
       </table>
     </div>
@@ -234,21 +232,21 @@
   <tbody id="dublbubl">
     {% for row in dublbubl %}
     <tr class="
-    {% if row[3] >= 10000 %}
+    {% if row.points_out >= 10000 %}
       table-dark
-    {% elif row[3] >= 5000 %}
+    {% elif row.points_out >= 5000 %}
       table-danger
-    {% elif row[3] >= 1000 %}
+    {% elif row.points_out >= 1000 %}
       table-warning
     {% else %}
       table-success
     {% endif %}
     ">
-      <td>{{ row[0] }}</td>
-      <td>{{ row[2] }}</td>
-      <td>{{ row[3] }}</td>
-      <td>{{ row[4] }}</td>
-      <td>{{ row[5] }}</td>
+      <td>{{ row.row_id }}</td>
+      <td>{{ row.username }}</td>
+      <td>{{ row.points_in }}</td>
+      <td>{{ row.points_out }}</td>
+      <td>{{ row.date_created }}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -331,9 +329,6 @@ if (window.location.hostname === "localhost" || window.location.hostname === "12
 
 
 
-
-
-
   
 
 
@@ -347,13 +342,13 @@ socket.on("update_table", (data) => {
   // Add the updated rows to the table
   data.rows.forEach((row) => {
     const tr = document.createElement("tr");
-    tr.className = determineRowClass(row[3]); // Apply class based on points_in
+    tr.className = determineRowClass(row.points_in); // Apply class based on points_in
     tr.innerHTML = `
-      <td>${row[0]}</td>
-      <td>${row[2]}</td>
-      <td>${row[3]}</td>
-      <td>${row[4]}</td>
-      <td>${row[5]}</td>
+      <td>${row.row_id}</td>
+      <td>${row.username }</td>
+      <td>${row.points_in}</td>
+      <td>${row.points_out}</td>
+      <td>${row.date_created}</td>
     `;
     tableBody.appendChild(tr);
   });
