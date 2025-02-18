@@ -273,7 +273,14 @@ def get_timer_state():
 
     if last_row:
         last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
-        datetime.datetime.now(datetime.timezone.utc)
+
+        # Make sure last_timestamp is timezone-aware
+        if last_timestamp.tzinfo is None:
+            last_timestamp = last_timestamp.replace(tzinfo=datetime.timezone.utc)
+
+        # Get the current time in UTC
+        current_time = datetime.datetime.now(datetime.timezone.utc)
+        
         remaining_time = 86400 - int((current_time - last_timestamp).total_seconds()) # 86400 seconds = 24 hours
         hours, remainder = divmod(remaining_time, 3600)
         minutes, seconds = divmod(remainder, 60)
