@@ -179,7 +179,12 @@ def countdown_timer():
 
         # This will be the main loop where the timer will wait for a new row
         while last_timestamp:
-            current_time = datetime.datetime.now()
+            # Get the current time in UTC
+            current_time = datetime.datetime.now(datetime.timezone.utc)
+
+            # Convert last_timestamp to a timezone-aware datetime if it is naive
+            if last_timestamp.tzinfo is None:
+                last_timestamp = last_timestamp.replace(tzinfo=datetime.timezone.utc)
 
             # Calculate the remaining time until 24 hours is reached
             remaining_time = 86400 - int((current_time - last_timestamp).total_seconds()) # 86400 seconds = 24 hours
@@ -229,7 +234,13 @@ def countdown_timer():
             # Check if a new row has been added, and update the timestamp if necessary
             last_row = session.query(Dublbubl).with_entities(Dublbubl.date_created).order_by(Dublbubl.row_id.desc()).first()
             if last_row:
+                # Parse the date from the database and make it timezone-aware if it's naive
                 new_last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
+
+                # Make sure new_last_timestamp is timezone-aware
+                if new_last_timestamp.tzinfo is None:
+                    new_last_timestamp = new_last_timestamp.replace(tzinfo=datetime.timezone.utc)
+
                 if new_last_timestamp > last_timestamp:
                     last_timestamp = new_last_timestamp
                     continue  # A new row has been added, restart the timer
@@ -262,7 +273,7 @@ def get_timer_state():
 
     if last_row:
         last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
-        current_time = datetime.datetime.now()
+        datetime.datetime.now(datetime.timezone.utc)
         remaining_time = 86400 - int((current_time - last_timestamp).total_seconds()) # 86400 seconds = 24 hours
         hours, remainder = divmod(remaining_time, 3600)
         minutes, seconds = divmod(remainder, 60)
@@ -386,7 +397,7 @@ def index():
     })  # Broadcasts to all connected clients
 
     points = request.form.get("points")
-    current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     message = None
     
     if request.method == "POST":
@@ -444,7 +455,7 @@ def index():
                 points_out = points * 1.25  # Otherwise, points_out equals points_in (e.g., for smaller amounts)
 
             # Definre current_date
-            current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            current_date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
             # Check if a PointsTracker entry exists
             points_tracker = PointsTracker.query.first()
