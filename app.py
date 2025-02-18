@@ -22,7 +22,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from sqlalchemy import create_engine, func
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 
 # Load environment variables from .env file
@@ -137,8 +137,9 @@ def is_valid_password(password):
         return False
 
     # Regex for password validation
-    # Ensure password is between 6 to 20 characters, with at least one lowercase letter, one uppercase letter, and one digit
-    password_pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{6,20}$"
+    # Ensure password is between 6 to 20 characters, with at least one lowercase letter, one uppercase letter,
+    # one digit, and allows special characters (like !@#$%^&* etc.)
+    password_pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{6,20}$"
     
     return bool(re.match(password_pattern, password))
 
@@ -164,13 +165,13 @@ timer_running = False
 # Background countdown timer using socketio.start_background_task()
 def countdown_timer():
     global timer_running  # Use the global flag to control the task state
+    with app.app_context():  # Push the app context for this background task
+        Session = scoped_session(sessionmaker(bind=db.engine))  # Create a scoped session for the thread
+
     while True:
+        session = Session()
         # Open a new database connection to get the last row's timestamp
-        thread_con = sqlite3.connect("dublbubl.db", check_same_thread=False)
-        thread_cur = thread_con.cursor()
-
-        last_row = thread_cur.execute("SELECT date_created FROM dublbubl ORDER BY row_id DESC LIMIT 1").fetchone()
-
+        last_row = session.query(Dublbubl).with_entities(Dublbubl.date_created).order_by(Dublbubl.row_id.desc()).first()
         if last_row:
             last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
         else:
@@ -194,12 +195,11 @@ def countdown_timer():
                 # If 30 seconds have passed, perform the cleanup
                 formatted_time = "00:00:00"  # Emit 00:00:00 when time runs out
                 print("30 seconds elapsed with no new row. Clearing dublbubl table.")
-                thread_cur.execute("DELETE FROM dublbubl")
-                thread_con.commit()
+                session.query(Dublbubl).delete()
 
                 # Reset current_points_in to 0 in points_tracker table
-                thread_cur.execute("UPDATE points_tracker SET current_points_in = 0")
-                thread_con.commit()
+                session.query(PointsTracker).update({"current_points_in": 0})
+                session.commit()
 
                 # Emit an empty table to the front-end
                 socketio.emit("update_table", {"rows": []})  # Notify frontend of table reset
@@ -208,7 +208,7 @@ def countdown_timer():
                 socketio.emit("update_points", {"current_points_in": 0})  # Notify frontend of points reset
 
                 # Emit real-time update for current_points_in and points_in_required
-                current_points_in = thread_cur.execute("SELECT current_points_in FROM points_tracker").fetchone()
+                current_points_in = session.query(PointsTracker).with_entities(PointsTracker.current_points_in).first()
                 points_in_required = 0  # Default value 
 
                 if current_points_in is None or points_in_required is None:
@@ -227,7 +227,7 @@ def countdown_timer():
                 break  # Exit the loop and reset the process
 
             # Check if a new row has been added, and update the timestamp if necessary
-            last_row = thread_cur.execute("SELECT date_created FROM dublbubl ORDER BY row_id DESC LIMIT 1").fetchone()
+            last_row = session.query(Dublbubl).with_entities(Dublbubl.date_created).order_by(Dublbubl.row_id.desc()).first()
             if last_row:
                 new_last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
                 if new_last_timestamp > last_timestamp:
@@ -235,7 +235,7 @@ def countdown_timer():
                     continue  # A new row has been added, restart the timer
 
         # Close the thread-specific connection
-        thread_con.close()
+        session.remove()
 
         time.sleep(1)  # Sleep briefly before restarting the loop
 
@@ -253,10 +253,12 @@ def start_timer():
 @socketio.on('get_timer_state')
 def get_timer_state():
     # Retrieve the current remaining time from the database or timer state
-    thread_con = sqlite3.connect("dublbubl.db", check_same_thread=False)
-    thread_cur = thread_con.cursor()
+    with app.app_context():  # Push the app context for this background task
+        Session = scoped_session(sessionmaker(bind=db.engine))  # Create a scoped session for the thread
+        
+    session = Session()  # Access the session for that thread
 
-    last_row = thread_cur.execute("SELECT date_created FROM dublbubl ORDER BY row_id DESC LIMIT 1").fetchone()
+    last_row = session.query(Dublbubl).with_entities(Dublbubl.date_created).order_by(Dublbubl.row_id.desc()).first()
 
     if last_row:
         last_timestamp = datetime.datetime.strptime(last_row[0], "%Y-%m-%d %H:%M:%S")
@@ -358,7 +360,7 @@ def index():
                 # Fetch the user details
                 user = Users.query.get(user_id)
                 # Fetch the last 5 user's dublbubl history
-                user_history = Dublbubl.query.filter_by(user_id=user_id).order_by(Dublbubl.row_id.desc()).limit(5).all()
+                user_history = DublbublHistory.query.filter_by(creator_id=user_id).order_by(DublbublHistory.row_id.desc()).limit(5).all()
             else:
                 user = None
                 user_history = None
@@ -442,7 +444,7 @@ def index():
                 points_out = points * 1.25  # Otherwise, points_out equals points_in (e.g., for smaller amounts)
 
             # Definre current_date
-            current_date = datetime.datetime.now()
+            current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # Check if a PointsTracker entry exists
             points_tracker = PointsTracker.query.first()
@@ -924,9 +926,8 @@ def logout():
 def leaderboard():
     """Leaderboard"""
 
-    user = cur.execute("SELECT username, total_points_earned FROM users ORDER BY total_points_earned DESC LIMIT 5").fetchall()
+    user = Users.query.with_entities(Users.username, Users.total_points_earned).order_by(Users.total_points_earned.desc()).limit(5).all()
 
-    print(user[0][0])
 
     if request.method == "POST":
         return redirect("/")
@@ -939,7 +940,13 @@ def leaderboard():
 def history():
     """History"""
 
-    dublbubl_history = cur.execute("SELECT row_id, creator_username, points_in, points_out, date_created FROM dublbubl_history users ORDER BY row_id DESC LIMIT 50").fetchall()
+    dublbubl_history = db.session.query(DublbublHistory).with_entities(
+    DublbublHistory.row_id,
+    DublbublHistory.creator_username,
+    DublbublHistory.points_in,
+    DublbublHistory.points_out,
+    DublbublHistory.date_created
+    ).order_by(DublbublHistory.row_id.desc()).limit(50).all()
 
     if request.method == "POST":
         return redirect("/")
@@ -972,7 +979,8 @@ def change_password():
 
         # Check database for user details
         user_id = session["user_id"]
-        user = cur.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        user = db.session.query(Users).filter(Users.id == user_id).first()
+
         print(user)
         print(user_id)
  
@@ -982,7 +990,7 @@ def change_password():
             return render_template("account.html", message="User not found")
 
         # Get the stored hashed password
-        stored_password_hash = user[2]
+        stored_password_hash = user.hash
 
         # Check if the entered password matches the stored hash
         if not check_password_hash(stored_password_hash, password):
@@ -995,9 +1003,9 @@ def change_password():
         # If password is correct, proceed to change it
         hashed_new_password = generate_password_hash(new_password)
         
-        # Update the password in the database
-        cur.execute("UPDATE users SET hash = ? WHERE id = ?", (hashed_new_password, user_id))
-        con.commit()
+        # Update the password in the database using SQLAlchemy
+        user.hash = hashed_new_password  # Update the 'hash' field with the new password hash
+        db.session.commit()  # Commit the changes to the database
 
         return render_template("account.html", message="Password changed successfully")
 

@@ -125,11 +125,11 @@
         <tbody id="user-history">
           {% for user in user_history %}
           <tr class="table-light">
-            <td>{{ user[3] }}</td>
-            <td>{{ user[6] }}</td>
-            <td>{{ user[7] }}</td>
-            <td>{{ user[8] }}</td>
-            <td>{{ user[9] }}</td>
+            <td>{{ user.row_id }}</td>
+            <td>{{ user.points_in }}</td>
+            <td>{{ user.points_out }}</td>
+            <td>{{ user.date_created }}</td>
+            <td>{{ user.date_archived }}</td>
           </tr>
           {% endfor %}
         </tbody>
