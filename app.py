@@ -138,8 +138,8 @@ def is_valid_password(password):
 
     # Regex for password validation
     # Ensure password is between 6 to 20 characters, with at least one lowercase letter, one uppercase letter,
-    # one digit, and allows special characters (like !@#$%^&* etc.)
-    password_pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{6,20}$"
+    # one digit, and optional special characters.
+    password_pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d\W_]{6,20}$"
     
     return bool(re.match(password_pattern, password))
 
